@@ -1,0 +1,7 @@
+{
+  "mean": 0.008361,
+  "std": 0.029517,
+  "calibrated_from": "close-to-close test-period weekly returns, 2024-01-04 to 2026-06-18 (10-seed ensemble, vol gate + EMA pipeline)",
+  "calibrated_on": "2026-07-03",
+  "note": "Weekly close-to-close portfolio log-return mean/std used by drift_monitor.py. Do not recalibrate from simulate.py after 2026-07-03 because simulate.py models next-open live execution."
+}

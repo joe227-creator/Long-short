@@ -1,0 +1,44 @@
+{
+  "activation": "swish",
+  "architectures": [
+    "TimesFm2_5ModelForPrediction"
+  ],
+  "attention_bias": false,
+  "attention_dropout": 0.0,
+  "context_length": 16384,
+  "decode_index": 5,
+  "dtype": "float32",
+  "force_flip_invariance": true,
+  "head_dim": 80,
+  "hidden_size": 1280,
+  "horizon_length": 128,
+  "infer_is_positive": true,
+  "initializer_range": 0.02,
+  "intermediate_size": 1280,
+  "max_position_embeddings": 16384,
+  "model_type": "timesfm2_5",
+  "num_attention_heads": 16,
+  "num_hidden_layers": 20,
+  "num_key_value_heads": 16,
+  "output_quantile_len": 1024,
+  "patch_length": 32,
+  "quantiles": [
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7,
+    0.8,
+    0.9
+  ],
+  "rms_norm_eps": 1e-06,
+  "rope_parameters": {
+    "rope_theta": 10000.0,
+    "rope_type": "default"
+  },
+  "transformers_version": "5.3.0.dev0",
+  "use_bias": false,
+  "use_continuous_quantile_head": true
+}

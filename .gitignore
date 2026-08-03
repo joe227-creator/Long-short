@@ -1,0 +1,38 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+worktrees/
+results/
+queue/
+
+# Experimental code/artifacts
+dev/
+
+# Experiment logs
+results.tsv
+research_memory.txt
+
+# Model checkpoints
+models/
+*.pt
+*.pth
+
+# Cached data
+data/
+
+# Training logs
+run.log
+
+# Environment secrets
+.env
+# Runtime outputs (trade logs, chart images)
+trade_log.json
+scheduled_trade.log
+trade_chart_*.png
