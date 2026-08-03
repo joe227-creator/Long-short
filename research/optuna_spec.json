@@ -1,11 +1,12 @@
 {
-  "study_name": "ensemble_disagreement_strength",
-  "parameter": "UNCERTAINTY_STRENGTH",
-  "low": 0.0,
-  "high": 10.0,
+  "study_name": "partial_adjustment",
+  "parameter": "PARTIAL_ADJUSTMENT",
+  "low": 0.1,
+  "high": 1.0,
   "log": false,
   "n_trials": 6,
   "seed": 20260803,
   "cost_bps": 10,
+  "uncertainty_strength": 1.1225169591437967,
   "stress_bps": [5, 10, 25, 50]
 }

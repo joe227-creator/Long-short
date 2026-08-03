@@ -1,4 +1,4 @@
-"""Validation-only Optuna selection for disagreement-aware exposure."""
+"""Validation-only Optuna selection for cost-aware portfolio exposure."""
 
 import csv
 import json
@@ -19,6 +19,9 @@ def _read_spec():
 def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
     if spec["parameter"] == "UNCERTAINTY_STRENGTH":
         signals = signals / (1.0 + value * dispersion)
+    elif spec["parameter"] == "PARTIAL_ADJUSTMENT":
+        strength = float(spec.get("uncertainty_strength", 0.0))
+        signals = signals / (1.0 + strength * dispersion)
     elif spec["parameter"] in {"VOL_GATE_THRESHOLD", "VOL_GATE_STRENGTH", "CASH_BIAS"}:
         setattr(_train, spec["parameter"], float(value))
     else:
@@ -26,6 +29,15 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
     weights, returns = _train.compute_portfolio(
         signals, targets, vol_forecast=vol_forecast
     )
+    if spec["parameter"] == "PARTIAL_ADJUSTMENT" and len(weights) > 1:
+        adjusted_weights = weights.clone()
+        for row in range(1, len(adjusted_weights)):
+            adjusted_weights[row] = (
+                adjusted_weights[row - 1]
+                + float(value) * (weights[row] - adjusted_weights[row - 1])
+            )
+        weights = adjusted_weights
+        returns = (weights * targets).sum(dim=1)
     returns_np = returns.detach().cpu().numpy()
     weights_np = weights.detach().cpu().numpy()
     turnover = np.zeros(len(returns_np), dtype=float)
