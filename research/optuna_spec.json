@@ -1,8 +1,9 @@
 {
-  "study_name": "partial_hysteresis",
-  "parameter": "HYSTERESIS",
-  "low": 0.0,
-  "high": 0.5,
+  "study_name": "volatility_gate_window",
+  "parameter": "VOL_GATE_WINDOW",
+  "low": 5,
+  "high": 60,
+  "integer": true,
   "log": false,
   "n_trials": 6,
   "seed": 20260803,
