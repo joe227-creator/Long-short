@@ -31,12 +31,35 @@ def _apply_hysteresis(signals, band):
     return torch.stack(held, dim=0)
 
 
+def _apply_adaptive_hysteresis(signals, dispersion, base_band, slope):
+    if len(signals) <= 1:
+        return signals
+    held = [signals[0]]
+    previous = signals[0]
+    for row, current in enumerate(signals[1:], start=1):
+        band = float(base_band) + float(slope) * dispersion[row]
+        previous = torch.where(
+            torch.abs(current - previous) >= band,
+            current,
+            previous,
+        )
+        held.append(previous)
+    return torch.stack(held, dim=0)
+
+
 def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
     fixed_strength = spec.get("fixed_uncertainty_strength")
     if fixed_strength is not None:
         signals = signals / (1.0 + float(fixed_strength) * dispersion)
     if spec["parameter"] == "HYSTERESIS":
         signals = _apply_hysteresis(signals, float(value))
+    elif spec["parameter"] == "ADAPTIVE_HYSTERESIS_SLOPE":
+        signals = _apply_adaptive_hysteresis(
+            signals,
+            dispersion,
+            float(spec.get("fixed_hysteresis", 0.0)),
+            float(value),
+        )
     elif spec["parameter"] == "UNCERTAINTY_STRENGTH":
         signals = signals / (1.0 + value * dispersion)
     elif spec["parameter"] == "PARTIAL_ADJUSTMENT":

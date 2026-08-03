@@ -1,13 +1,14 @@
 {
-  "study_name": "partial_hysteresis",
-  "parameter": "HYSTERESIS",
+  "study_name": "uncertainty_adaptive_hysteresis",
+  "parameter": "ADAPTIVE_HYSTERESIS_SLOPE",
   "low": 0.0,
-  "high": 0.5,
+  "high": 2.0,
   "log": false,
   "n_trials": 6,
   "seed": 20260803,
   "cost_bps": 10,
   "fixed_uncertainty_strength": 1.1225169591437967,
   "fixed_partial_adjustment": 0.44338242523523974,
+  "fixed_hysteresis": 0.056125847957189834,
   "stress_bps": [5, 10, 25, 50]
 }
