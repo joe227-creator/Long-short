@@ -20,7 +20,10 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
     if spec["parameter"] == "UNCERTAINTY_STRENGTH":
         signals = signals / (1.0 + value * dispersion)
     elif spec["parameter"] == "PARTIAL_ADJUSTMENT":
-        strength = float(spec.get("uncertainty_strength", 0.0))
+        strength = float(spec.get(
+            "fixed_uncertainty_strength",
+            spec.get("uncertainty_strength", 0.0),
+        ))
         signals = signals / (1.0 + strength * dispersion)
     elif spec["parameter"] in {"VOL_GATE_THRESHOLD", "VOL_GATE_STRENGTH", "CASH_BIAS"}:
         setattr(_train, spec["parameter"], float(value))
@@ -84,6 +87,11 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
             _baseline_reference(stress_metrics)[0],
         )
         stress.append({"bps": bps, "score": stress_score})
+    selection_score = dict(net_score)
+    if spec.get("selection_objective") == "stress_mean":
+        selection_score["research_score"] = float(np.mean([
+            item["score"]["research_score"] for item in stress
+        ]))
     Path(".openresearch/artifacts").mkdir(parents=True, exist_ok=True)
     Path(f".openresearch/artifacts/cost_overlay_{split}.json").write_text(
         json.dumps({
@@ -97,7 +105,7 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
         }, indent=2, default=str) + "\n",
         encoding="utf-8",
     )
-    return net_score, weights, net_returns, gross_score
+    return selection_score, weights, net_returns, gross_score
 
 
 def _write_trials(path, study):

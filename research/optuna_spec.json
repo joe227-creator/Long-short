@@ -1,5 +1,5 @@
 {
-  "study_name": "partial_adjustment",
+  "study_name": "stress_robust_partial_adjustment",
   "parameter": "PARTIAL_ADJUSTMENT",
   "low": 0.1,
   "high": 1.0,
@@ -7,6 +7,7 @@
   "n_trials": 6,
   "seed": 20260803,
   "cost_bps": 10,
-  "uncertainty_strength": 1.1225169591437967,
-  "stress_bps": [5, 10, 25, 50]
+  "fixed_uncertainty_strength": 1.1225169591437967,
+  "stress_bps": [5, 10, 25, 50],
+  "selection_objective": "stress_mean"
 }
