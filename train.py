@@ -48,7 +48,7 @@ WEIGHT_DECAY = 1e-4          # Baseline.
 BATCH_SIZE = 32             # mini-batch size — 32→85.68% (BEST), 16→70.30%, 48→53.28%, 64→80.89%
 PATIENCE = 10                # early stopping patience (epochs without improvement)
 MIN_TRAIN_TIME = 120         # minimum training seconds before early stopping allowed
-LOSS_TYPE = "log_cagr"      # DIRECTLY MAXIMIZE long-only portfolio CAGR (clip weights + log return loss). Was huber (signal regression — didn't optimize portfolio returns, CAGR stuck at 6.8%). log_cagr computes loss on portfolio_returns from clipped long-only weights → model learns to push signals for profitable long-only positions.
+LOSS_TYPE = "cagr_skew"    # Arithmetic return objective with positive-skew reward.
 LABEL_SMOOTHING = float(os.environ.get("ARC_LABEL_SMOOTH", "0.05"))  # REVERTED from 0.10: test showed 0.10 was val-overfit (test Calmar 0.027). 0.05 was the round-1 peak and is more conservative. Re-probe only if 2yr baseline shows consistent sub-periods.
                               # 'cagr', 'log_cagr', 'cagr_cvar', 'cagr_skew', 'cagr_cvar_skew'
 HUBER_DELTA = float(os.environ.get("ARC_HUBER_DELTA", "0.70")) # Huber loss delta — 0.65 optimal (0.55→86.03%, 0.70→86.40%)
