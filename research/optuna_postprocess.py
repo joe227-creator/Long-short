@@ -19,6 +19,10 @@ def _read_spec():
 def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
     if spec["parameter"] == "UNCERTAINTY_STRENGTH":
         signals = signals / (1.0 + value * dispersion)
+    elif spec["parameter"] == "SIGNAL_CLIP":
+        strength = float(spec.get("fixed_uncertainty_strength", 0.0))
+        signals = signals / (1.0 + strength * dispersion)
+        signals = torch.clamp(signals, -float(value), float(value))
     elif spec["parameter"] == "PARTIAL_ADJUSTMENT":
         strength = float(spec.get("uncertainty_strength", 0.0))
         signals = signals / (1.0 + strength * dispersion)
@@ -29,12 +33,15 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
     weights, returns = _train.compute_portfolio(
         signals, targets, vol_forecast=vol_forecast
     )
-    if spec["parameter"] == "PARTIAL_ADJUSTMENT" and len(weights) > 1:
+    partial_rate = spec.get("fixed_partial_adjustment")
+    if spec["parameter"] == "PARTIAL_ADJUSTMENT":
+        partial_rate = value
+    if partial_rate is not None and len(weights) > 1:
         adjusted_weights = weights.clone()
         for row in range(1, len(adjusted_weights)):
             adjusted_weights[row] = (
                 adjusted_weights[row - 1]
-                + float(value) * (weights[row] - adjusted_weights[row - 1])
+                + float(partial_rate) * (weights[row] - adjusted_weights[row - 1])
             )
         weights = adjusted_weights
         returns = (weights * targets).sum(dim=1)
