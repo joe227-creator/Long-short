@@ -7,5 +7,6 @@
   "n_trials": 6,
   "seed": 20260803,
   "cost_bps": 10,
-  "stress_bps": [5, 10, 25, 50]
+  "stress_bps": [5, 10, 25, 50],
+  "selection_objective": "stress_mean"
 }
