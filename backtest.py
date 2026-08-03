@@ -35,6 +35,7 @@ from train import (
 import train as _train_module
 from production_model import _aggregate_ensemble, apply_signal_pipeline, load_timesfm_features_by_date
 from research.evidence import write_evidence
+from research.optuna_postprocess import optimize_or_load
 
 MODELS_DIR = "models"
 
@@ -232,8 +233,14 @@ def run_backtest(split="test"):
     vol_forecast = _load_timesfm_vol_forecast(evaluation_dates)
     _train_module._VOL_FORECAST_TENSOR = vol_forecast
 
-    weights, portfolio_returns = compute_portfolio(
-        all_signals_t, all_targets_t, vol_forecast=vol_forecast
+    weights, portfolio_returns = optimize_or_load(
+        split,
+        all_signals_t,
+        all_targets_t,
+        vol_forecast,
+        evaluation_dates,
+        trade_frequency,
+        compute_metrics,
     )
     ret_np = portfolio_returns.numpy()
     w_np = weights.numpy()

@@ -1,0 +1,9 @@
+{
+  "study_name": "backward_volatility_threshold",
+  "parameter": "VOL_GATE_THRESHOLD",
+  "low": 0.0005,
+  "high": 0.01,
+  "log": true,
+  "n_trials": 6,
+  "seed": 20260803
+}
