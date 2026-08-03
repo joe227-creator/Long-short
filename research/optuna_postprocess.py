@@ -4,7 +4,9 @@ import csv
 import json
 from pathlib import Path
 
+import numpy as np
 import optuna
+import torch
 
 import train as _train
 from research.evidence import _baseline_reference, _score, _window_records
@@ -14,7 +16,7 @@ def _read_spec():
     return json.loads(Path("research/optuna_spec.json").read_text(encoding="utf-8"))
 
 
-def _evaluate(value, spec, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
+def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
     if spec["parameter"] == "UNCERTAINTY_STRENGTH":
         signals = signals / (1.0 + value * dispersion)
     elif spec["parameter"] in {"VOL_GATE_THRESHOLD", "VOL_GATE_STRENGTH", "CASH_BIAS"}:
@@ -26,19 +28,64 @@ def _evaluate(value, spec, signals, targets, vol_forecast, dates, frequency, dis
     )
     returns_np = returns.detach().cpu().numpy()
     weights_np = weights.detach().cpu().numpy()
-    metrics = metric_fn(
+    turnover = np.zeros(len(returns_np), dtype=float)
+    if len(weights_np) > 1:
+        turnover[1:] = np.abs(weights_np[1:] - weights_np[:-1]).sum(axis=1)
+    cost_rate = float(spec["cost_bps"]) / 10000.0
+    net_returns_np = returns_np - cost_rate * turnover
+    net_returns = torch.as_tensor(net_returns_np, dtype=returns.dtype)
+    gross_metrics = metric_fn(
         returns_np,
         weights_np,
         52 if frequency == "weekly" else 252,
         frequency,
     )
-    windows = _window_records(
-        returns_np,
-        dates,
-        26 if frequency == "weekly" else 126,
+    net_metrics = metric_fn(
+        net_returns_np,
+        weights_np,
+        52 if frequency == "weekly" else 252,
+        frequency,
     )
-    baseline_turnover, _ = _baseline_reference(metrics)
-    return _score(metrics, windows, baseline_turnover), weights, returns
+    window_periods = 26 if frequency == "weekly" else 126
+    gross_score = _score(
+        gross_metrics,
+        _window_records(returns_np, dates, window_periods),
+        _baseline_reference(gross_metrics)[0],
+    )
+    net_score = _score(
+        net_metrics,
+        _window_records(net_returns_np, dates, window_periods),
+        _baseline_reference(net_metrics)[0],
+    )
+    stress = []
+    for bps in spec.get("stress_bps", [spec["cost_bps"]]):
+        stress_returns = returns_np - (float(bps) / 10000.0) * turnover
+        stress_metrics = metric_fn(
+            stress_returns,
+            weights_np,
+            52 if frequency == "weekly" else 252,
+            frequency,
+        )
+        stress_score = _score(
+            stress_metrics,
+            _window_records(stress_returns, dates, window_periods),
+            _baseline_reference(stress_metrics)[0],
+        )
+        stress.append({"bps": bps, "score": stress_score})
+    Path(".openresearch/artifacts").mkdir(parents=True, exist_ok=True)
+    Path(f".openresearch/artifacts/cost_overlay_{split}.json").write_text(
+        json.dumps({
+            "cost_bps": spec["cost_bps"],
+            "selected_parameter": spec["parameter"],
+            "selected_value": value,
+            "mean_period_cost": float((cost_rate * turnover).mean()),
+            "gross": {"metrics": gross_metrics, "score": gross_score},
+            "net": {"metrics": net_metrics, "score": net_score},
+            "stress": stress,
+        }, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    return net_score, weights, net_returns, gross_score
 
 
 def _write_trials(path, study):
@@ -55,7 +102,7 @@ def _write_trials(path, study):
 
 
 def optimize_or_load(split, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
-    """Select disagreement strength on validation, then reuse it on test."""
+    """Select disagreement strength on net validation, then reuse on test."""
     spec = _read_spec()
     artifact_dir = Path(".openresearch/artifacts")
     artifact_dir.mkdir(parents=True, exist_ok=True)
@@ -80,8 +127,8 @@ def optimize_or_load(split, signals, targets, vol_forecast, dates, frequency, di
                 float(spec["high"]),
                 log=bool(spec.get("log", False)),
             )
-            score, _, _ = _evaluate(
-                value, spec, signals, targets, vol_forecast, dates,
+            score, _, _, _ = _evaluate(
+                split, value, spec, signals, targets, vol_forecast, dates,
                 frequency, dispersion, metric_fn,
             )
             trial.set_user_attr("sharpe", score["sharpe"])
@@ -112,8 +159,9 @@ def optimize_or_load(split, signals, targets, vol_forecast, dates, frequency, di
         best_value = json.loads(best_path.read_text(encoding="utf-8"))["value"]
         print(f"OPTUNA reused {spec['parameter']}={float(best_value):.8g}")
 
-    _, weights, returns = _evaluate(
-        best_value, spec, signals, targets, vol_forecast, dates,
+    _, weights, returns, _ = _evaluate(
+        split, best_value, spec, signals, targets, vol_forecast, dates,
         frequency, dispersion, metric_fn,
     )
+    print(f"COST_BPS={spec['cost_bps']} net_score_artifact=cost_overlay_{split}.json")
     return weights, returns
