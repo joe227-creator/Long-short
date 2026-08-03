@@ -1,0 +1,9 @@
+{
+  "study_name": "cash_bias",
+  "parameter": "CASH_BIAS",
+  "low": 0.5,
+  "high": 4.0,
+  "log": false,
+  "n_trials": 6,
+  "seed": 20260803
+}

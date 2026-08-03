@@ -197,17 +197,13 @@ EMA_DECAY = 0                # REVERTED from 0.98: test showed EMA is val-overfi
 # LAWA (Latest Weight Averaging)
 LAWA_K = 0                   # REVERTED from 3: 20-seed showed LAWA+EMA was SEED-FAVORED (canonical 2.229, 20-seed 1.766, 20.7% collapse). Honest central 1.766 << EMA-only 2.184. EMA=0.98 alone is the honest best. 0=disabled.
 
-# Portfolio variant flags (USER REQUEST Jul 1 2026) — 4 variants via env:
-#   long-short        (ARC_LONG_ONLY=0 ARC_CASH=0)
-#   long-only         (ARC_LONG_ONLY=1 ARC_CASH=0)
-#   long-short+cash   (ARC_LONG_ONLY=0 ARC_CASH=1)
-#   long-only+cash    (ARC_LONG_ONLY=1 ARC_CASH=1)
+# Portfolio variant: learned cash abstention direction.
 # Cash: model outputs a 5th signal; cash_weight=sigmoid(sig)*CASH_MAX scales ETF
 # weights by (1-cash_weight). Cash earns ~0%. Lets model de-risk in bear markets.
-CASH_ENABLED = os.environ.get("ARC_CASH", "0") == "1"  # default off for baseline
-CASH_MAX = float(os.environ.get("ARC_CASH_MAX", "0.50"))  # max cash allocation
-CASH_BIAS = float(os.environ.get("ARC_CASH_BIAS", "2.0"))  # sigmoid shift: bias=2 → default ~12% of CASH_MAX
-LONG_ONLY = os.environ.get("ARC_LONG_ONLY", "0") == "1"  # default long+short
+CASH_ENABLED = True
+CASH_MAX = 0.50
+CASH_BIAS = 2.0
+LONG_ONLY = False
 
 # Volatility gate (USER EXPERIMENT Jul 2 2026): scale down positions when market
 # volatility is high (bear markets). Helps val MaxDD without hurting test (bull=low vol).
