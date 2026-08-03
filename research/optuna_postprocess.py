@@ -50,6 +50,9 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
     fixed_strength = spec.get("fixed_uncertainty_strength")
     if fixed_strength is not None:
         signals = signals / (1.0 + float(fixed_strength) * dispersion)
+    fixed_hysteresis = spec.get("fixed_hysteresis")
+    if fixed_hysteresis is not None:
+        signals = _apply_hysteresis(signals, float(fixed_hysteresis))
     if spec["parameter"] == "HYSTERESIS":
         signals = _apply_hysteresis(signals, float(value))
     elif spec["parameter"] == "UNCERTAINTY_STRENGTH":
