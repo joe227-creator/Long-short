@@ -16,8 +16,28 @@ def _read_spec():
     return json.loads(Path("research/optuna_spec.json").read_text(encoding="utf-8"))
 
 
+def _apply_hysteresis(signals, band):
+    if band <= 0 or len(signals) <= 1:
+        return signals
+    held = [signals[0]]
+    previous = signals[0]
+    for current in signals[1:]:
+        previous = torch.where(
+            torch.abs(current - previous) >= band,
+            current,
+            previous,
+        )
+        held.append(previous)
+    return torch.stack(held, dim=0)
+
+
 def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
-    if spec["parameter"] == "UNCERTAINTY_STRENGTH":
+    fixed_strength = spec.get("fixed_uncertainty_strength")
+    if fixed_strength is not None:
+        signals = signals / (1.0 + float(fixed_strength) * dispersion)
+    if spec["parameter"] == "HYSTERESIS":
+        signals = _apply_hysteresis(signals, float(value))
+    elif spec["parameter"] == "UNCERTAINTY_STRENGTH":
         signals = signals / (1.0 + value * dispersion)
     elif spec["parameter"] in {"VOL_GATE_THRESHOLD", "VOL_GATE_STRENGTH", "CASH_BIAS"}:
         setattr(_train, spec["parameter"], float(value))
@@ -102,7 +122,7 @@ def _write_trials(path, study):
 
 
 def optimize_or_load(split, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
-    """Select disagreement strength on net validation, then reuse on test."""
+    """Select cost-aware postprocessing on net validation, then reuse on test."""
     spec = _read_spec()
     artifact_dir = Path(".openresearch/artifacts")
     artifact_dir.mkdir(parents=True, exist_ok=True)

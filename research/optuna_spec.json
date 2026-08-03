@@ -1,11 +1,12 @@
 {
-  "study_name": "ensemble_disagreement_strength",
-  "parameter": "UNCERTAINTY_STRENGTH",
+  "study_name": "cost_aware_hysteresis",
+  "parameter": "HYSTERESIS",
   "low": 0.0,
-  "high": 10.0,
+  "high": 0.5,
   "log": false,
   "n_trials": 6,
   "seed": 20260803,
   "cost_bps": 10,
-  "stress_bps": [5, 10, 25, 50]
+  "stress_bps": [5, 10, 25, 50],
+  "fixed_uncertainty_strength": 1.1225169591437967
 }
