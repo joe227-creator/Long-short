@@ -15,6 +15,9 @@ def _read_spec():
 
 
 def _evaluate(value, spec, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
+    fixed_strength = spec.get("fixed_uncertainty_strength")
+    if fixed_strength is not None:
+        signals = signals / (1.0 + float(fixed_strength) * dispersion)
     if spec["parameter"] == "UNCERTAINTY_STRENGTH":
         signals = signals / (1.0 + value * dispersion)
     elif spec["parameter"] in {"VOL_GATE_THRESHOLD", "VOL_GATE_STRENGTH", "CASH_BIAS"}:
@@ -55,7 +58,7 @@ def _write_trials(path, study):
 
 
 def optimize_or_load(split, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
-    """Select disagreement strength on validation, then reuse it on test."""
+    """Select stacked portfolio parameter on validation, then reuse on test."""
     spec = _read_spec()
     artifact_dir = Path(".openresearch/artifacts")
     artifact_dir.mkdir(parents=True, exist_ok=True)
