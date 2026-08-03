@@ -9,6 +9,7 @@ import os
 import math
 import time
 import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -1145,6 +1146,7 @@ def train_single_split(features_df, targets_df, device, train_end=None, val_end=
     seeds = ENSEMBLE_SEEDS if ENSEMBLE_SEEDS else [42]
     ensemble_models = []
     seed_val_sharpes = []  # for weighted ensemble
+    seed_results = []
     num_params = 0
 
     for seed_idx, SEED in enumerate(seeds):
@@ -1417,6 +1419,11 @@ def train_single_split(features_df, targets_df, device, train_end=None, val_end=
         # Per-seed metrics
         seed_val = evaluate_portfolio(model, val_loader, device, TRADE_FREQUENCY)
         seed_test = evaluate_portfolio(model, test_loader, device, TRADE_FREQUENCY)
+        seed_results.append({
+            "seed": int(SEED),
+            "val": seed_val,
+            "test": seed_test,
+        })
         seed_val_sharpes.append(seed_val['sharpe'])
         print(f"  Seed {SEED}: val_score={seed_val['val_score']:.6f}, "
               f"val_sharpe={seed_val['sharpe']:.6f}, test_sharpe={seed_test['sharpe']:.6f}")
@@ -1437,6 +1444,12 @@ def train_single_split(features_df, targets_df, device, train_end=None, val_end=
         val_metrics = evaluate_portfolio(ensemble_models[0], val_loader, device, TRADE_FREQUENCY)
         test_metrics = evaluate_portfolio(ensemble_models[0], test_loader, device, TRADE_FREQUENCY)
 
+    artifact_dir = Path(".openresearch/artifacts")
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    (artifact_dir / "seed_metrics.json").write_text(
+        json.dumps({"fold": fold_label, "seeds": seed_results}, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
     return val_metrics, test_metrics, epoch, num_params
 
 

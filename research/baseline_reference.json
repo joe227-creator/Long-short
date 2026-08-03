@@ -1,0 +1,6 @@
+{
+  "baseline_turnover": 0.298372,
+  "source": "pre-run frozen production checkpoint backtest",
+  "source_commit": "8c974c9",
+  "evaluation": "weekly returns converted to 26 observations per 126 trading-session window"
+}

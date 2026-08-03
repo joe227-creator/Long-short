@@ -34,6 +34,7 @@ from train import (
 )
 import train as _train_module
 from production_model import _aggregate_ensemble, apply_signal_pipeline, load_timesfm_features_by_date
+from research.evidence import write_evidence
 
 MODELS_DIR = "models"
 
@@ -239,6 +240,10 @@ def run_backtest(split="test"):
 
     periods_per_year = 52 if trade_frequency == "weekly" else 252
     m = compute_metrics(ret_np, w_np, periods_per_year, trade_frequency)
+    evidence = write_evidence(
+        split, m, ret_np, w_np, evaluation_dates, config
+    )
+    score = evidence["score"]
 
     # Print human-readable report
     print(f"\n{'=' * 60}")
@@ -259,6 +264,7 @@ def run_backtest(split="test"):
     print(f"  Win Rate:          {m['win_rate']:.1%}")
     print(f"  Mean Return/period:{m['mean_ret']:+.4%}")
     print(f"  Std Return/period: {m['std_ret']:.4%}")
+    print(f"  Research Score:    {score['research_score']:+.8f}")
     print()
 
     # Per-pair breakdown
@@ -273,16 +279,22 @@ def run_backtest(split="test"):
 
     print(f"\n{'=' * 60}")
 
-    # --- Emit METRIC lines (lowercase names, autoresearch convention) ---
+    # --- Emit validation METRIC lines; test lines are informational only. ---
+    metric_prefix = "METRIC" if split == "val" else "TEST_METRIC"
     # Primary
-    print(f"METRIC cagr={m['cagr']:.6f}")
+    print(f"{metric_prefix} cagr={m['cagr']:.6f}")
     # Secondary (per user priority: CVaR then Skewness)
-    print(f"METRIC cvar_95={m['cvar_95']:.6f}")
-    print(f"METRIC skewness={m['skewness']:.6f}")
+    print(f"{metric_prefix} cvar_95={m['cvar_95']:.6f}")
+    print(f"{metric_prefix} skewness={m['skewness']:.6f}")
     # Additional info metrics
-    print(f"METRIC sharpe={m['sharpe']:.6f}")
-    print(f"METRIC max_drawdown={m['max_drawdown']:.6f}")
-    print(f"METRIC turnover={m['turnover']:.6f}")
+    print(f"{metric_prefix} sharpe={m['sharpe']:.6f}")
+    print(f"{metric_prefix} max_drawdown={m['max_drawdown']:.6f}")
+    print(f"{metric_prefix} turnover={m['turnover']:.6f}")
+    print(f"{metric_prefix} mean_rolling_6m_return={score['mean_rolling_6m_return']:.6f}")
+    print(f"{metric_prefix} return_on_risk={score['return_on_risk']:.6f}")
+    print(f"{metric_prefix} win_rate_126_session={score['win_rate_126_session']:.6f}")
+    print(f"{metric_prefix} maximum_drawdown={score['maximum_drawdown']:.6f}")
+    print(f"{metric_prefix} research_score={score['research_score']:.6f}")
 
     return m
 
