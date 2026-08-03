@@ -1,12 +1,13 @@
 {
-  "study_name": "partial_adjustment",
-  "parameter": "PARTIAL_ADJUSTMENT",
-  "low": 0.1,
-  "high": 1.0,
+  "study_name": "partial_hysteresis",
+  "parameter": "HYSTERESIS",
+  "low": 0.0,
+  "high": 0.5,
   "log": false,
   "n_trials": 6,
   "seed": 20260803,
   "cost_bps": 10,
-  "uncertainty_strength": 1.1225169591437967,
+  "fixed_uncertainty_strength": 1.1225169591437967,
+  "fixed_partial_adjustment": 0.44338242523523974,
   "stress_bps": [5, 10, 25, 50]
 }
