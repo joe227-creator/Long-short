@@ -31,12 +31,24 @@ def _apply_hysteresis(signals, band):
     return torch.stack(held, dim=0)
 
 
+def _apply_deadband(signals, band):
+    if band <= 0:
+        return signals
+    return torch.where(
+        torch.abs(signals) < band,
+        torch.zeros_like(signals),
+        signals,
+    )
+
+
 def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
     fixed_strength = spec.get("fixed_uncertainty_strength")
     if fixed_strength is not None:
         signals = signals / (1.0 + float(fixed_strength) * dispersion)
     if spec["parameter"] == "HYSTERESIS":
         signals = _apply_hysteresis(signals, float(value))
+    elif spec["parameter"] == "SIGNAL_DEADBAND":
+        signals = _apply_deadband(signals, float(value))
     elif spec["parameter"] == "UNCERTAINTY_STRENGTH":
         signals = signals / (1.0 + value * dispersion)
     elif spec["parameter"] == "PARTIAL_ADJUSTMENT":
@@ -46,6 +58,9 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
         setattr(_train, spec["parameter"], float(value))
     else:
         raise ValueError(f"Unsupported Optuna parameter: {spec['parameter']}")
+    fixed_hysteresis = spec.get("fixed_hysteresis")
+    if fixed_hysteresis is not None:
+        signals = _apply_hysteresis(signals, float(fixed_hysteresis))
     weights, returns = _train.compute_portfolio(
         signals, targets, vol_forecast=vol_forecast
     )

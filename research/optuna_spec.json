@@ -1,6 +1,6 @@
 {
-  "study_name": "partial_hysteresis",
-  "parameter": "HYSTERESIS",
+  "study_name": "cost_aware_signal_deadband",
+  "parameter": "SIGNAL_DEADBAND",
   "low": 0.0,
   "high": 0.5,
   "log": false,
@@ -9,5 +9,6 @@
   "cost_bps": 10,
   "fixed_uncertainty_strength": 1.1225169591437967,
   "fixed_partial_adjustment": 0.44338242523523974,
+  "fixed_hysteresis": 0.056125847957189834,
   "stress_bps": [5, 10, 25, 50]
 }
