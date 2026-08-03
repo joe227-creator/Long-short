@@ -1,13 +1,13 @@
 {
-  "study_name": "partial_hysteresis",
-  "parameter": "HYSTERESIS",
-  "low": 0.0,
-  "high": 0.5,
+  "study_name": "volatility_gate_formula",
+  "parameter": "VOL_GATE_FORMULA",
+  "choices": ["backward", "timesfm", "timesfm_blend", "timesfm_var"],
   "log": false,
   "n_trials": 6,
   "seed": 20260803,
   "cost_bps": 10,
   "fixed_uncertainty_strength": 1.1225169591437967,
   "fixed_partial_adjustment": 0.44338242523523974,
+  "fixed_hysteresis": 0.05612685219961834,
   "stress_bps": [5, 10, 25, 50]
 }
