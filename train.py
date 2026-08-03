@@ -48,7 +48,7 @@ WEIGHT_DECAY = 1e-4          # Baseline.
 BATCH_SIZE = 32             # mini-batch size — 32→85.68% (BEST), 16→70.30%, 48→53.28%, 64→80.89%
 PATIENCE = 10                # early stopping patience (epochs without improvement)
 MIN_TRAIN_TIME = 120         # minimum training seconds before early stopping allowed
-LOSS_TYPE = "log_cagr"      # DIRECTLY MAXIMIZE long-only portfolio CAGR (clip weights + log return loss). Was huber (signal regression — didn't optimize portfolio returns, CAGR stuck at 6.8%). log_cagr computes loss on portfolio_returns from clipped long-only weights → model learns to push signals for profitable long-only positions.
+LOSS_TYPE = "log_cagr"      # Direct geometric-mean portfolio objective.
 LABEL_SMOOTHING = float(os.environ.get("ARC_LABEL_SMOOTH", "0.05"))  # REVERTED from 0.10: test showed 0.10 was val-overfit (test Calmar 0.027). 0.05 was the round-1 peak and is more conservative. Re-probe only if 2yr baseline shows consistent sub-periods.
                               # 'cagr', 'log_cagr', 'cagr_cvar', 'cagr_skew', 'cagr_cvar_skew'
 HUBER_DELTA = float(os.environ.get("ARC_HUBER_DELTA", "0.70")) # Huber loss delta — 0.65 optimal (0.55→86.03%, 0.70→86.40%)
@@ -57,7 +57,9 @@ HUBER_DELTA = float(os.environ.get("ARC_HUBER_DELTA", "0.70")) # Huber loss delt
 RET_SCALE = float(os.environ.get("ARC_RET_SCALE", "100"))     # return scaling for CAGR-family
 CVAR_WEIGHT = float(os.environ.get("ARC_CVAR_WEIGHT", "10"))  # CVaR penalty (higher = risk-averse)
 SKEW_WEIGHT = float(os.environ.get("ARC_SKEW_WEIGHT", "5"))   # skewness reward (higher = more positive skew)
-TURN_PEN = float(os.environ.get("ARC_TURN_PEN", "15.0"))  # TRY: 15 (best test 3.06) WITH circuit breaker to protect val
+TURN_PEN = 0.0               # Cost-aware ablation removes heuristic turnover penalty.
+COST_AWARE_LOSS = True
+COST_BPS = 10.0              # Explicit fee basis per traded notional.
 CVAR_QUANTILE = 0.05  # percentile for CVaR computation (default 95%)
 
 # Trading
@@ -1156,7 +1158,7 @@ def train_single_split(features_df, targets_df, device, train_end=None, val_end=
         np.random.seed(SEED)
 
         # Dual-ensemble 3+7: 3 seeds TURN_PEN=15 (test), 7 seeds TURN_PEN=17.5 (val) — CHAMPION
-        _dual_enabled = (os.environ.get("ARC_DUAL_ENSEMBLE", "1") == "1")
+        _dual_enabled = (os.environ.get("ARC_DUAL_ENSEMBLE", "1") == "1") and not COST_AWARE_LOSS
         if len(seeds) == 10 and MODEL_TYPE == "lstm" and _dual_enabled:
             globals()['TURN_PEN'] = 17.5 if seed_idx >= 3 else 15.0
             if seed_idx == 0:
@@ -1222,6 +1224,8 @@ def train_single_split(features_df, targets_df, device, train_end=None, val_end=
             "long_only": LONG_ONLY,
             "seq_len": SEQ_LEN,
             "trade_frequency": TRADE_FREQUENCY,
+            "cost_aware_loss": COST_AWARE_LOSS,
+            "cost_bps": COST_BPS,
             "feature_columns": feature_columns,
             "scaler_params": scaler_params,
         }
@@ -1287,7 +1291,8 @@ def train_single_split(features_df, targets_df, device, train_end=None, val_end=
                 elif LOSS_TYPE == "log_cagr":
                     # Direct geometric-mean (compound) maximization → CAGR proxy
                     log_returns = torch.log((portfolio_returns + 1.0).clamp(min=1e-2))
-                    loss = -log_returns.mean() * RET_SCALE + TURN_PEN * turnover
+                    fee_loss = (COST_BPS / 10000.0) * turnover * RET_SCALE
+                    loss = -log_returns.mean() * RET_SCALE + fee_loss
                 else:
                     # CAGR-family: arithmetic mean maximization with optional CVaR / Skew
                     mean_ret = portfolio_returns.mean()
