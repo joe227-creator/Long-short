@@ -212,7 +212,8 @@ def optimize_or_load(split, signals, targets, vol_forecast, dates, frequency, di
             "seed": spec["seed"],
         }, indent=2) + "\n", encoding="utf-8")
         _write_trials(artifact_dir / f"optuna_{spec['study_name']}_trials.csv", study)
-        print(f"OPTUNA best {spec['parameter']}={best_value:.8g} score={best_score:.8f}")
+        value_text = best_value if isinstance(best_value, str) else f"{best_value:.8g}"
+        print(f"OPTUNA best {spec['parameter']}={value_text} score={best_score:.8f}")
     else:
         if not best_path.exists():
             raise RuntimeError("Validation Optuna result missing before test evaluation")
