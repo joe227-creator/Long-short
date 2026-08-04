@@ -67,7 +67,9 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
     if len(weights_np) > 1:
         turnover[1:] = np.abs(weights_np[1:] - weights_np[:-1]).sum(axis=1)
     cost_rate = float(spec["cost_bps"]) / 10000.0
-    net_returns_np = returns_np - cost_rate * turnover
+    impact_bps = float(spec.get("impact_bps", 0.0))
+    impact_cost = (impact_bps / 10000.0) * np.sqrt(turnover)
+    net_returns_np = returns_np - cost_rate * turnover - impact_cost
     net_returns = torch.as_tensor(net_returns_np, dtype=returns.dtype)
     gross_metrics = metric_fn(
         returns_np,
@@ -94,7 +96,11 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
     )
     stress = []
     for bps in spec.get("stress_bps", [spec["cost_bps"]]):
-        stress_returns = returns_np - (float(bps) / 10000.0) * turnover
+        stress_returns = (
+            returns_np
+            - (float(bps) / 10000.0) * turnover
+            - impact_cost
+        )
         stress_metrics = metric_fn(
             stress_returns,
             weights_np,
@@ -111,9 +117,11 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
     Path(f".openresearch/artifacts/cost_overlay_{split}.json").write_text(
         json.dumps({
             "cost_bps": spec["cost_bps"],
+            "impact_bps": impact_bps,
             "selected_parameter": spec["parameter"],
             "selected_value": value,
             "mean_period_cost": float((cost_rate * turnover).mean()),
+            "mean_period_impact": float(impact_cost.mean()),
             "gross": {"metrics": gross_metrics, "score": gross_score},
             "net": {"metrics": net_metrics, "score": net_score},
             "stress": stress,
