@@ -25,7 +25,25 @@ def _apply_hysteresis(signals, band):
     return apply_state_band(signals, band)
 
 
+def _select_dispersion(dispersion, spec, value):
+    if not isinstance(dispersion, dict):
+        return dispersion
+    metric = spec.get("dispersion_metric", "std")
+    if spec["parameter"] == "UNCERTAINTY_STATISTIC":
+        metric = value
+    if metric not in dispersion:
+        raise ValueError(f"Unknown uncertainty statistic: {metric}")
+    return dispersion[metric]
+
+
+def _format_optuna_value(value):
+    if isinstance(value, (int, float)):
+        return f"{value:.8g}"
+    return str(value)
+
+
 def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
+    dispersion = _select_dispersion(dispersion, spec, value)
     fixed_strength = spec.get("fixed_uncertainty_strength")
     if fixed_strength is not None:
         signals = signals / (1.0 + float(fixed_strength) * dispersion)
@@ -40,6 +58,8 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
         setattr(_train, spec["parameter"], float(value))
     elif spec["parameter"] == "WEIGHT_BAND":
         pass
+    elif spec["parameter"] == "UNCERTAINTY_STATISTIC":
+        pass
     else:
         raise ValueError(f"Unsupported Optuna parameter: {spec['parameter']}")
     weights, returns = _train.compute_portfolio(
@@ -53,6 +73,9 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
         returns = (weights * targets).sum(dim=1)
     if spec["parameter"] == "WEIGHT_BAND":
         weights = apply_weight_band(weights, value)
+        returns = (weights * targets).sum(dim=1)
+    elif spec.get("fixed_weight_band") is not None:
+        weights = apply_weight_band(weights, spec["fixed_weight_band"])
         returns = (weights * targets).sum(dim=1)
     returns_np = returns.detach().cpu().numpy()
     weights_np = weights.detach().cpu().numpy()
@@ -149,12 +172,15 @@ def optimize_or_load(split, signals, targets, vol_forecast, dates, frequency, di
         study.set_user_attr("parameter", spec["parameter"])
 
         def objective(trial):
-            value = trial.suggest_float(
-                spec["parameter"],
-                float(spec["low"]),
-                float(spec["high"]),
-                log=bool(spec.get("log", False)),
-            )
+            if "choices" in spec:
+                value = trial.suggest_categorical(spec["parameter"], spec["choices"])
+            else:
+                value = trial.suggest_float(
+                    spec["parameter"],
+                    float(spec["low"]),
+                    float(spec["high"]),
+                    log=bool(spec.get("log", False)),
+                )
             score, _, _, _ = _evaluate(
                 split, value, spec, signals, targets, vol_forecast, dates,
                 frequency, dispersion, metric_fn,
@@ -180,12 +206,17 @@ def optimize_or_load(split, signals, targets, vol_forecast, dates, frequency, di
             "seed": spec["seed"],
         }, indent=2) + "\n", encoding="utf-8")
         _write_trials(artifact_dir / f"optuna_{spec['study_name']}_trials.csv", study)
-        print(f"OPTUNA best {spec['parameter']}={best_value:.8g} score={best_score:.8f}")
+        print(
+            f"OPTUNA best {spec['parameter']}={_format_optuna_value(best_value)} "
+            f"score={best_score:.8f}"
+        )
     else:
         if not best_path.exists():
             raise RuntimeError("Validation Optuna result missing before test evaluation")
         best_value = json.loads(best_path.read_text(encoding="utf-8"))["value"]
-        print(f"OPTUNA reused {spec['parameter']}={float(best_value):.8g}")
+        print(
+            f"OPTUNA reused {spec['parameter']}={_format_optuna_value(best_value)}"
+        )
 
     _, weights, returns, _ = _evaluate(
         split, best_value, spec, signals, targets, vol_forecast, dates,
