@@ -19,9 +19,31 @@ import torch.nn.functional as F
 
 from prepare import (
     TIME_BUDGET, LOOKBACK, NUM_PAIRS, ETF_TICKERS, ETF_PAIRS, PAIR_NAMES,
-    DATA_SPLIT_VERSION, build_dataset, make_dataloaders, evaluate_portfolio,
+    DATA_SPLIT_VERSION, build_dataset, download_etf_data, make_dataloaders, evaluate_portfolio,
     signals_to_weights, TRAIN_END, VAL_END, normalize_features, validate_feature_columns,
 )
+
+
+def _build_live_execution_targets(index, trade_frequency):
+    """Build point-in-time targets for next-open live execution."""
+    etf_df = download_etf_data(refresh=False)
+    horizon = 1 if trade_frequency == "daily" else 5
+    price_columns = [
+        f"{ticker}_{field}"
+        for ticker in ETF_TICKERS
+        for field in ("Open", "Close")
+    ]
+    if not np.isfinite(etf_df[price_columns].to_numpy(dtype=float)).all():
+        raise ValueError("Live execution ETF data contains missing/non-finite prices")
+    targets = {}
+    for ticker in ETF_TICKERS:
+        entry = np.log(etf_df[f"{ticker}_Open"].shift(-1))
+        exit_ = np.log(etf_df[f"{ticker}_Close"].shift(-horizon))
+        targets[f"{ticker}_fwd_ret"] = exit_ - entry
+    target_df = pd.DataFrame(targets, index=etf_df.index).reindex(index)
+    valid = target_df.notna().all(axis=1)
+    return target_df.loc[valid]
+
 
 # ---------------------------------------------------------------------------
 # Hyperparameters (edit these directly — autoresearch agent tunes these)
@@ -62,6 +84,7 @@ CVAR_QUANTILE = 0.05  # percentile for CVaR computation (default 95%)
 
 # Trading
 TRADE_FREQUENCY = "weekly"   # 'daily' or 'weekly'
+LIVE_TRAINING_TARGETS = True  # align training target with next-open live execution
 
 # Walk-forward cross-validation
 WALK_FORWARD_CV = False      # True = 3-fold expanding-window CV, False = single split
@@ -1493,6 +1516,13 @@ def main():
                   f"replaced with '{_REPLACE_MACRO_WITH}'")
         else:
             print(f"REPLACE_MACRO: WARNING - no columns found for {orig_prefix}*")
+
+    if LIVE_TRAINING_TARGETS:
+        live_targets = _build_live_execution_targets(features_df.index, TRADE_FREQUENCY)
+        common_idx = features_df.index.intersection(live_targets.index)
+        features_df = features_df.loc[common_idx]
+        targets_df = live_targets.loc[common_idx]
+        print("Targets: next-open live execution")
 
     if WALK_FORWARD_CV:
         # Walk-forward cross-validation: train on expanding windows, validate on each fold

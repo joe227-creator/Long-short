@@ -23,7 +23,8 @@ import torch
 
 from prepare import (
     NUM_PAIRS, ETF_PAIRS, PAIR_NAMES, VAL_END, TRAIN_END,
-    build_dataset, signals_to_weights, normalize_features, validate_feature_columns,
+    build_dataset, download_etf_data, signals_to_weights, normalize_features,
+    validate_feature_columns,
 )
 from train import (
     load_checkpoint, ENSEMBLE_SEEDS, SEQ_LEN,
@@ -34,10 +35,12 @@ from train import (
 )
 import train as _train_module
 from production_model import _aggregate_ensemble, apply_signal_pipeline, load_timesfm_features_by_date
+from simulate import build_live_execution_targets
 from research.evidence import write_evidence
 from research.optuna_postprocess import optimize_or_load
 
 MODELS_DIR = "models"
+LIVE_EXECUTION_TARGETS = True
 
 
 def load_ensemble(device):
@@ -141,6 +144,14 @@ def run_backtest(split="test"):
     # Load data
     print(f"\nLoading data (frequency={trade_frequency})...")
     features_df, targets_df = build_dataset(trade_frequency=trade_frequency)
+    if LIVE_EXECUTION_TARGETS:
+        live_targets = build_live_execution_targets(
+            download_etf_data(refresh=False), trade_frequency=trade_frequency
+        ).reindex(features_df.index)
+        valid_targets = live_targets.notna().all(axis=1)
+        features_df = features_df.loc[valid_targets]
+        targets_df = live_targets.loc[valid_targets]
+        print("  Targets: next-open live execution")
 
     # Filter to model's feature columns
     features_df = validate_feature_columns(
