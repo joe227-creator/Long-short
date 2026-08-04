@@ -95,7 +95,7 @@ EARLY_STOP_VAL_END   = "2022-01-01"  # HONEST: early-stop val 2020-2021 (~104 we
 ENSEMBLE_SEEDS = [6, 42, 123, 7, 99, 11, 22, 33, 44, 55]  # 10-seed ensemble: stabilizes Calmar (5-seed showed 2.6x seed-variance)
 # Heterogeneous ensemble: different DROPOUT per seed for regime diversity.
 # With EMA=0.98: EMA may stabilize aggressive models (DROPOUT=0.35) that dragged val to 1.802 without EMA.
-ENSEMBLE_DROPOUTS = []  # Homogeneous (all DROPOUT=0.30). Aggressive target.
+ENSEMBLE_DROPOUTS = [0.10, 0.15, 0.20, 0.25, 0.30, 0.10, 0.15, 0.20, 0.25, 0.30]
 WEIGHTED_ENSEMBLE = False    # True = weight seeds by softmax(val_sharpe), False = equal
 ENSEMBLE_AGG = "trimmed_mean"        # ensemble aggregation: "mean", "median", "trimmed_mean" — trimmed_mean is BEST
 EXCLUDE_FEATURES = []  # patterns to exclude from features (empty = all)
