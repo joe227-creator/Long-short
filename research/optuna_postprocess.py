@@ -40,6 +40,8 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
         setattr(_train, spec["parameter"], float(value))
     elif spec["parameter"] == "WEIGHT_BAND":
         pass
+    elif spec["parameter"] == "SIGNAL_POWER_POST":
+        signals = torch.sign(signals) * torch.abs(signals) ** float(value)
     else:
         raise ValueError(f"Unsupported Optuna parameter: {spec['parameter']}")
     weights, returns = _train.compute_portfolio(
@@ -51,8 +53,12 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
     if partial_rate is not None and len(weights) > 1:
         weights = apply_partial_adjustment(weights, partial_rate)
         returns = (weights * targets).sum(dim=1)
+    fixed_band = spec.get("fixed_weight_band")
     if spec["parameter"] == "WEIGHT_BAND":
         weights = apply_weight_band(weights, value)
+        returns = (weights * targets).sum(dim=1)
+    elif fixed_band is not None and len(weights) > 1:
+        weights = apply_weight_band(weights, float(fixed_band))
         returns = (weights * targets).sum(dim=1)
     returns_np = returns.detach().cpu().numpy()
     weights_np = weights.detach().cpu().numpy()
