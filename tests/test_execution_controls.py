@@ -6,6 +6,7 @@ import numpy as np
 import torch
 
 from research.execution_controls import (
+    apply_drawdown_breaker,
     apply_live_weight_band,
     apply_partial_adjustment,
     apply_weight_band,
@@ -73,6 +74,43 @@ class ExecutionControlTests(unittest.TestCase):
         self.assertAlmostEqual(controls["uncertainty_strength"], 1.1225169591437967)
         self.assertAlmostEqual(controls["partial_adjustment"], 0.44338242523523974)
         self.assertAlmostEqual(controls["weight_band"], 0.01683775438715695)
+
+    def test_drawdown_breaker_no_drawdown_leaves_weights_unchanged(self):
+        weights = torch.tensor([[0.5, -0.5], [0.5, -0.5], [0.5, -0.5]])
+        targets = torch.tensor([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]])
+
+        scaled = apply_drawdown_breaker(weights, targets, 0.10)
+
+        self.assertTrue(torch.allclose(scaled, weights))
+
+    def test_drawdown_breaker_scales_down_after_loss(self):
+        weights = torch.tensor([[1.0, -1.0], [1.0, -1.0], [1.0, -1.0]])
+        targets = torch.tensor([[-0.20, 0.0], [0.0, 0.0], [0.0, 0.0]])
+
+        scaled = apply_drawdown_breaker(weights, targets, 0.10)
+
+        self.assertAlmostEqual(float(scaled[0, 0]), 1.0)
+        self.assertAlmostEqual(float(scaled[1, 0]), 0.0)
+        self.assertAlmostEqual(float(scaled[2, 0]), 0.0)
+
+    def test_drawdown_breaker_recovers_at_new_high(self):
+        weights = torch.tensor([[1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0]])
+        targets = torch.tensor([[-0.10, 0.0], [0.15, 0.0], [0.10, 0.0], [0.0, 0.0]])
+
+        scaled = apply_drawdown_breaker(weights, targets, 0.20)
+
+        self.assertAlmostEqual(float(scaled[0, 0]), 1.0)
+        self.assertAlmostEqual(float(scaled[1, 0]), 0.5)
+        self.assertGreater(float(scaled[2, 0]), 0.5)
+        self.assertAlmostEqual(float(scaled[3, 0]), 1.0)
+
+    def test_drawdown_breaker_zero_threshold_is_noop(self):
+        weights = torch.tensor([[0.5, -0.5], [0.5, -0.5]])
+        targets = torch.tensor([[-0.10, 0.0], [0.0, 0.0]])
+
+        scaled = apply_drawdown_breaker(weights, targets, 0.0)
+
+        self.assertTrue(torch.equal(scaled, weights))
 
 
 if __name__ == "__main__":

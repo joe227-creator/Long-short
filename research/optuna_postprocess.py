@@ -11,6 +11,7 @@ import torch
 import train as _train
 from research.evidence import _baseline_reference, _score, _window_records
 from research.execution_controls import (
+    apply_drawdown_breaker,
     apply_partial_adjustment,
     apply_state_band,
     apply_weight_band,
@@ -40,6 +41,8 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
         setattr(_train, spec["parameter"], float(value))
     elif spec["parameter"] == "WEIGHT_BAND":
         pass
+    elif spec["parameter"] == "DRAWDOWN_BREAKER":
+        pass
     else:
         raise ValueError(f"Unsupported Optuna parameter: {spec['parameter']}")
     weights, returns = _train.compute_portfolio(
@@ -51,8 +54,15 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
     if partial_rate is not None and len(weights) > 1:
         weights = apply_partial_adjustment(weights, partial_rate)
         returns = (weights * targets).sum(dim=1)
+    fixed_band = spec.get("fixed_weight_band")
     if spec["parameter"] == "WEIGHT_BAND":
         weights = apply_weight_band(weights, value)
+        returns = (weights * targets).sum(dim=1)
+    elif fixed_band is not None and len(weights) > 1:
+        weights = apply_weight_band(weights, float(fixed_band))
+        returns = (weights * targets).sum(dim=1)
+    if spec["parameter"] == "DRAWDOWN_BREAKER":
+        weights = apply_drawdown_breaker(weights, targets, float(value))
         returns = (weights * targets).sum(dim=1)
     returns_np = returns.detach().cpu().numpy()
     weights_np = weights.detach().cpu().numpy()

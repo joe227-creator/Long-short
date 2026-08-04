@@ -21,6 +21,8 @@ def load_live_execution_controls(spec_path=None):
         controls["partial_adjustment"] = float(spec["fixed_partial_adjustment"])
     if spec.get("parameter") == "WEIGHT_BAND" and spec.get("selected_value") is not None:
         controls["weight_band"] = float(spec["selected_value"])
+    elif spec.get("fixed_weight_band") is not None:
+        controls["weight_band"] = float(spec["fixed_weight_band"])
     return controls
 
 
@@ -77,3 +79,32 @@ def apply_live_weight_band(previous_weights, target_weights, band):
         target_weights,
         previous_weights,
     )
+
+
+def apply_drawdown_breaker(weights, targets, threshold):
+    """Causally scale weights down when running drawdown exceeds ``threshold``.
+
+    Scale at period t is derived from drawdown realized through period t-1, so
+    no lookahead leaks. ``scale = clamp(1 - |dd| / threshold, 0, 1)``: full
+    exposure at new highs, zero exposure once drawdown reaches the threshold,
+    self-recovering as wealth makes new highs.
+    """
+    threshold = float(threshold)
+    if threshold <= 0 or len(weights) <= 1:
+        return weights
+    if weights.shape != targets.shape:
+        raise ValueError("Weights and targets must have identical shapes")
+
+    scaled = weights.clone()
+    wealth = 1.0
+    running_max = 1.0
+    for t in range(len(weights)):
+        if t > 0:
+            dd = (wealth - running_max) / max(running_max, 1e-8)
+            scale = max(0.0, 1.0 - abs(dd) / threshold)
+            scaled[t] = weights[t] * scale
+        ret = float((scaled[t] * targets[t]).sum().item())
+        wealth = wealth * (1.0 + ret)
+        if wealth > running_max:
+            running_max = wealth
+    return scaled

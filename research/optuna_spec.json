@@ -1,14 +1,14 @@
 {
-  "study_name": "weight_band",
-  "parameter": "WEIGHT_BAND",
-  "low": 0.0,
-  "high": 0.15,
+  "study_name": "drawdown_breaker",
+  "parameter": "DRAWDOWN_BREAKER",
+  "low": 0.02,
+  "high": 0.20,
   "log": false,
   "n_trials": 6,
   "seed": 20260803,
-  "selected_value": 0.01683775438715695,
   "cost_bps": 10,
   "fixed_uncertainty_strength": 1.1225169591437967,
   "fixed_partial_adjustment": 0.44338242523523974,
+  "fixed_weight_band": 0.01683775438715695,
   "stress_bps": [5, 10, 25, 50]
 }
