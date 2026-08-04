@@ -7,6 +7,7 @@
   "n_trials": 6,
   "seed": 20260803,
   "cost_bps": 10,
+  "impact_bps": 25,
   "fixed_uncertainty_strength": 1.1225169591437967,
   "fixed_partial_adjustment": 0.44338242523523974,
   "stress_bps": [5, 10, 25, 50]
