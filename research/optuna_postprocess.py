@@ -10,6 +10,11 @@ import torch
 
 import train as _train
 from research.evidence import _baseline_reference, _score, _window_records
+from research.execution_controls import (
+    apply_partial_adjustment,
+    apply_state_band,
+    apply_weight_band,
+)
 
 
 def _read_spec():
@@ -17,18 +22,7 @@ def _read_spec():
 
 
 def _apply_hysteresis(signals, band):
-    if band <= 0 or len(signals) <= 1:
-        return signals
-    held = [signals[0]]
-    previous = signals[0]
-    for current in signals[1:]:
-        previous = torch.where(
-            torch.abs(current - previous) >= band,
-            current,
-            previous,
-        )
-        held.append(previous)
-    return torch.stack(held, dim=0)
+    return apply_state_band(signals, band)
 
 
 def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
@@ -44,6 +38,8 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
         signals = signals / (1.0 + strength * dispersion)
     elif spec["parameter"] in {"VOL_GATE_THRESHOLD", "VOL_GATE_STRENGTH", "CASH_BIAS"}:
         setattr(_train, spec["parameter"], float(value))
+    elif spec["parameter"] == "WEIGHT_BAND":
+        pass
     else:
         raise ValueError(f"Unsupported Optuna parameter: {spec['parameter']}")
     weights, returns = _train.compute_portfolio(
@@ -53,13 +49,10 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
     if spec["parameter"] == "PARTIAL_ADJUSTMENT":
         partial_rate = value
     if partial_rate is not None and len(weights) > 1:
-        adjusted_weights = weights.clone()
-        for row in range(1, len(adjusted_weights)):
-            adjusted_weights[row] = (
-                adjusted_weights[row - 1]
-                + float(partial_rate) * (weights[row] - adjusted_weights[row - 1])
-            )
-        weights = adjusted_weights
+        weights = apply_partial_adjustment(weights, partial_rate)
+        returns = (weights * targets).sum(dim=1)
+    if spec["parameter"] == "WEIGHT_BAND":
+        weights = apply_weight_band(weights, value)
         returns = (weights * targets).sum(dim=1)
     returns_np = returns.detach().cpu().numpy()
     weights_np = weights.detach().cpu().numpy()

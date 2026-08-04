@@ -1,8 +1,8 @@
 {
-  "study_name": "partial_hysteresis",
-  "parameter": "HYSTERESIS",
+  "study_name": "weight_band",
+  "parameter": "WEIGHT_BAND",
   "low": 0.0,
-  "high": 0.5,
+  "high": 0.15,
   "log": false,
   "n_trials": 6,
   "seed": 20260803,
