@@ -8,6 +8,7 @@ import torch
 from research.execution_controls import (
     apply_live_weight_band,
     apply_partial_adjustment,
+    apply_pair_weight_band,
     apply_weight_band,
     load_live_execution_controls,
 )
@@ -36,6 +37,22 @@ class ExecutionControlTests(unittest.TestCase):
             [0.0, 0.0],
             [0.0, 0.20],
             [0.10, 0.20],
+        ])
+        self.assertTrue(torch.equal(held, expected))
+
+    def test_pair_weight_band_updates_both_legs_together(self):
+        weights = torch.tensor([
+            [0.00, 0.00, 0.00, 0.00],
+            [0.04, 0.04, 0.10, 0.10],
+            [0.06, 0.06, 0.11, 0.11],
+        ])
+
+        held = apply_pair_weight_band(weights, 0.05)
+
+        expected = torch.tensor([
+            [0.00, 0.00, 0.00, 0.00],
+            [0.00, 0.00, 0.10, 0.10],
+            [0.06, 0.06, 0.10, 0.10],
         ])
         self.assertTrue(torch.equal(held, expected))
 

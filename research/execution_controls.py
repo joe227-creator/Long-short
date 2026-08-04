@@ -19,7 +19,7 @@ def load_live_execution_controls(spec_path=None):
         controls["uncertainty_strength"] = float(spec["fixed_uncertainty_strength"])
     if spec.get("fixed_partial_adjustment") is not None:
         controls["partial_adjustment"] = float(spec["fixed_partial_adjustment"])
-    if spec.get("parameter") == "WEIGHT_BAND" and spec.get("selected_value") is not None:
+    if spec.get("parameter") in {"WEIGHT_BAND", "PAIR_WEIGHT_BAND"} and spec.get("selected_value") is not None:
         controls["weight_band"] = float(spec["selected_value"])
     return controls
 
@@ -65,6 +65,25 @@ def apply_weight_band(weights, band):
     return apply_state_band(weights, band)
 
 
+def apply_pair_weight_band(weights, band, legs_per_pair=2):
+    """Update all pair legs when any leg crosses ``band``."""
+    band = float(band)
+    if band <= 0 or len(weights) <= 1:
+        return weights
+    if weights.ndim != 2 or weights.size(1) % legs_per_pair:
+        raise ValueError("Pair weight history has invalid shape")
+
+    held = [weights[0]]
+    previous = weights[0]
+    for current in weights[1:]:
+        pair_delta = torch.abs(current - previous).reshape(-1, legs_per_pair)
+        update = pair_delta.max(dim=1).values >= band
+        update = update.repeat_interleave(legs_per_pair)
+        previous = torch.where(update, current, previous)
+        held.append(previous)
+    return torch.stack(held, dim=0)
+
+
 def apply_live_weight_band(previous_weights, target_weights, band):
     """Retain prior live targets for ETF changes smaller than ``band``."""
     band = float(band)
@@ -77,3 +96,19 @@ def apply_live_weight_band(previous_weights, target_weights, band):
         target_weights,
         previous_weights,
     )
+
+
+def apply_live_pair_weight_band(previous_weights, target_weights, band, legs_per_pair=2):
+    """Update all live pair legs when any leg crosses ``band``."""
+    band = float(band)
+    if previous_weights is None or band <= 0:
+        return target_weights
+    if previous_weights.shape != target_weights.shape:
+        raise ValueError("Previous and target weights must have identical shapes")
+    if target_weights.ndim != 1 or target_weights.numel() % legs_per_pair:
+        raise ValueError("Pair target weights have invalid shape")
+
+    pair_delta = torch.abs(target_weights - previous_weights).reshape(-1, legs_per_pair)
+    update = pair_delta.max(dim=1).values >= band
+    update = update.repeat_interleave(legs_per_pair)
+    return torch.where(update, target_weights, previous_weights)

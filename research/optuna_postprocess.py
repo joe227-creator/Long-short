@@ -12,6 +12,7 @@ import train as _train
 from research.evidence import _baseline_reference, _score, _window_records
 from research.execution_controls import (
     apply_partial_adjustment,
+    apply_pair_weight_band,
     apply_state_band,
     apply_weight_band,
 )
@@ -40,6 +41,8 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
         setattr(_train, spec["parameter"], float(value))
     elif spec["parameter"] == "WEIGHT_BAND":
         pass
+    elif spec["parameter"] == "PAIR_WEIGHT_BAND":
+        pass
     else:
         raise ValueError(f"Unsupported Optuna parameter: {spec['parameter']}")
     weights, returns = _train.compute_portfolio(
@@ -53,6 +56,9 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
         returns = (weights * targets).sum(dim=1)
     if spec["parameter"] == "WEIGHT_BAND":
         weights = apply_weight_band(weights, value)
+        returns = (weights * targets).sum(dim=1)
+    if spec["parameter"] == "PAIR_WEIGHT_BAND":
+        weights = apply_pair_weight_band(weights, value)
         returns = (weights * targets).sum(dim=1)
     returns_np = returns.detach().cpu().numpy()
     weights_np = weights.detach().cpu().numpy()

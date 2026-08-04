@@ -1,6 +1,6 @@
 {
-  "study_name": "weight_band",
-  "parameter": "WEIGHT_BAND",
+  "study_name": "pair_weight_band",
+  "parameter": "PAIR_WEIGHT_BAND",
   "low": 0.0,
   "high": 0.15,
   "log": false,
