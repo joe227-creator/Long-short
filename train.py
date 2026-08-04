@@ -117,7 +117,7 @@ _EXPERIMENTAL_TECH_SUFFIXES = [
     # Momentum (6)
     "_kama", "_pvo", "_stochrsi", "_tsi", "_uo", "_willr",
     # Volume (9)
-    "_fi", "_mfi", "_nvi", "_obv", "_vpt", "_vwap",
+    "_adi", "_cmf", "_eom", "_fi", "_mfi", "_nvi", "_obv", "_vpt", "_vwap",
     # Volatility (5)
     "_atr", "_bb_pctb", "_dc_pct", "_kc_pct", "_ulcer",
     # Trend (15)
@@ -1482,6 +1482,11 @@ def main():
         if exp_cols:
             features_df = features_df.drop(columns=exp_cols)
             print(f"Excluded {len(exp_cols)} experimental features (set INCLUDE_EXPERIMENTAL_FEATURES=True to include)")
+    else:
+        invalid_exp_cols = [c for c in features_df.columns if c.endswith(("_adi", "_cmf", "_eom"))]
+        if invalid_exp_cols:
+            features_df = features_df.drop(columns=invalid_exp_cols)
+            print(f"Excluded {len(invalid_exp_cols)} non-finite experimental features")
 
     # Replace-macro: drop original macro columns
     if _REPLACE_MACRO_ORIG:
