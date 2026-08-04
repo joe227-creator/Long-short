@@ -44,6 +44,18 @@ class DummyModel:
         return torch.tensor([[0.1, -0.2, 0.3, -0.4]], dtype=torch.float32)
 
 
+class VaryingDummyModel(DummyModel):
+    def __init__(self, signal):
+        super().__init__(signal)
+        self.signal = signal
+
+    def __call__(self, _x):
+        return torch.tensor(
+            [[self.signal, -self.signal, self.signal, -self.signal]],
+            dtype=torch.float32,
+        )
+
+
 def _touch(path):
     with open(path, "wb"):
         pass
@@ -139,6 +151,35 @@ class ProductionEnsembleLoadingTests(unittest.TestCase):
         # Shifting the grid to the newest date degrades the signal (backtest
         # CAGR 50.75% -> 32.55%), so the trained grid phase must be preserved.
         self.assertEqual(decision["latest_date"], "2026-01-15")
+
+    def test_run_live_ensemble_scales_disagreement_before_weight_conversion(self):
+        dates = pd.bdate_range("2026-01-01", periods=12)
+        feat_df = pd.DataFrame({"feature_a": range(len(dates))}, index=dates)
+        config = dict(BASE_CONFIG)
+        config["seq_len"] = 3
+        models = [
+            VaryingDummyModel(1.0),
+            VaryingDummyModel(2.0),
+            VaryingDummyModel(3.0),
+            VaryingDummyModel(4.0),
+        ]
+        captured = {}
+
+        def fake_compute_portfolio(signals, _targets):
+            captured["signals"] = signals.clone()
+            return torch.zeros(1, 8), torch.zeros(1)
+
+        with mock.patch.object(production_model, "_load_timesfm_features", return_value=None), \
+             mock.patch.object(production_model, "_load_timesfm_vol_forecast", return_value=None), \
+             mock.patch.object(production_model, "compute_portfolio", side_effect=fake_compute_portfolio), \
+             mock.patch.object(production_model, "load_live_execution_controls", return_value={"uncertainty_strength": 1.0}), \
+             mock.patch.object(production_model, "SIGNAL_EMA_DECAY", 0.0), \
+             mock.patch.object(production_model, "SIGNAL_CLIP", 0.0), \
+             mock.patch.object(production_model, "SIGNAL_THRESHOLD", 0.0):
+            decision = production_model.run_live_ensemble(models, config, feat_df, device="cpu")
+
+        self.assertGreater(float(decision["dispersion"][0]), 0.0)
+        self.assertLess(abs(float(captured["signals"][0, 0])), 2.0)
 
 
 if __name__ == "__main__":

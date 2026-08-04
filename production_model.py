@@ -26,6 +26,7 @@ from train import (
     compute_portfolio, _load_timesfm_vol_forecast,
 )
 import train as _train_module
+from research.execution_controls import load_live_execution_controls
 
 
 MODELS_DIR = "models"
@@ -286,7 +287,7 @@ def run_live_ensemble(models, config, feat_df, device):
         x = torch.tensor(window, dtype=torch.float32).unsqueeze(0).to(device)
         with torch.no_grad():
             stacked = torch.stack([model(x).cpu() for model in models])
-        return _aggregate_ensemble(stacked)
+        return _aggregate_ensemble(stacked), stacked.std(dim=0)
 
     last_pos = len(feat_norm) - 1
     if SIGNAL_EMA_DECAY > 0:
@@ -296,19 +297,26 @@ def run_live_ensemble(models, config, feat_df, device):
         # reproduces the backtest EMA to numerical precision (0.4^30 ~ 1e-12).
         EMA_WARMUP_WEEKS = 30
         first_pos = max(seq_len - 1, last_pos - EMA_WARMUP_WEEKS + 1)
-        ema_sig = _ensemble_signal_at(first_pos).clone()
+        ema_sig, dispersion = _ensemble_signal_at(first_pos)
+        ema_sig = ema_sig.clone()
         for pos in range(first_pos + 1, last_pos + 1):
-            sig = _ensemble_signal_at(pos)
+            sig, dispersion = _ensemble_signal_at(pos)
             ema_sig = SIGNAL_EMA_DECAY * ema_sig + (1 - SIGNAL_EMA_DECAY) * sig
         avg_sig = ema_sig
     else:
-        avg_sig = _ensemble_signal_at(last_pos)
+        avg_sig, dispersion = _ensemble_signal_at(last_pos)
 
     # Load TimesFM features for the latest date (point-in-time, no look-ahead)
     tsfm_feat = _load_timesfm_features(latest_date)
 
     # Apply signal processing pipeline (clip, power, threshold, TimesFM blend)
     processed_sig = apply_signal_pipeline(avg_sig, tsfm_feat)
+
+    # Match validation-selected disagreement scaling before portfolio conversion.
+    execution_controls = load_live_execution_controls()
+    uncertainty_strength = execution_controls.get("uncertainty_strength", 0.0)
+    if uncertainty_strength > 0:
+        processed_sig = processed_sig / (1.0 + uncertainty_strength * dispersion)
 
     # Apply vol gate (circuit breaker) — MUST match backtest.py's compute_portfolio.
     # Scales down positions in high-volatility (bear) periods using the TimesFM
@@ -329,4 +337,6 @@ def run_live_ensemble(models, config, feat_df, device):
         "raw_signals": avg_sig.squeeze(0).cpu().numpy(),
         "signals": signals.squeeze(0).cpu().numpy(),
         "weights": weights.squeeze(0).cpu().numpy(),
+        "dispersion": dispersion.squeeze(0).cpu().numpy(),
+        "execution_controls": execution_controls,
     }

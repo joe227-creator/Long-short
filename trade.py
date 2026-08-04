@@ -31,6 +31,11 @@ from prepare import (
 )
 from train import load_checkpoint
 from drift_monitor import evaluate_drift, print_drift_report
+from research.execution_controls import (
+    apply_live_weight_band,
+    apply_partial_adjustment,
+    load_live_execution_controls,
+)
 
 MODELS_DIR = "models"
 LOG_FILE = "trade_log.json"
@@ -143,6 +148,35 @@ def flat_action(weight):
     return "HOLD"
 
 
+def apply_live_execution_controls(weights_np, previous_log, controls=None):
+    """Apply selected partial adjustment and target retention to live weights."""
+    controls = load_live_execution_controls() if controls is None else controls
+    target = torch.as_tensor(weights_np, dtype=torch.float32)
+    if not previous_log:
+        return target.numpy()
+
+    previous_record = previous_log[-1].get("weights", {})
+    etfs = [etf for pair in ETF_PAIRS for etf in pair]
+    if any(etf not in previous_record for etf in etfs):
+        return target.numpy()
+    previous = torch.tensor(
+        [float(previous_record[etf]) for etf in etfs],
+        dtype=target.dtype,
+    )
+
+    partial_rate = controls.get("partial_adjustment")
+    if partial_rate is not None:
+        target = apply_partial_adjustment(
+            torch.stack([previous, target], dim=0), partial_rate
+        )[-1]
+    target = apply_live_weight_band(
+        previous,
+        target,
+        controls.get("weight_band", 0.0),
+    )
+    return target.numpy()
+
+
 def generate_positions():
     """Generate current positions from the ensemble and update the trade log."""
     device = torch.device("cpu")
@@ -193,8 +227,25 @@ def generate_positions():
 
     raw_signals_np = decision["raw_signals"]
     signals_np = decision["signals"]
-    weights_np = decision["weights"]
+    base_weights_np = decision["weights"]
     latest_date = decision["latest_date"]
+
+    # Load prior targets before applying stateful live controls.
+    log = load_trade_log()
+    execution_controls = load_live_execution_controls()
+    same_date = bool(log and log[-1].get("date") == latest_date)
+    if same_date:
+        weights_np = np.array([
+            float(log[-1]["weights"][etf])
+            for pair in ETF_PAIRS
+            for etf in pair
+        ])
+    else:
+        weights_np = apply_live_execution_controls(
+            base_weights_np,
+            log,
+            execution_controls,
+        )
 
     # Build current position record
     current = {
@@ -202,17 +253,18 @@ def generate_positions():
         "timestamp": datetime.now().isoformat(),
         "raw_signals": {},
         "signals": {},
+        "base_weights": {},
         "weights": {},
+        "execution_controls": execution_controls,
     }
 
     for i, (pair_name, (bull, bear)) in enumerate(zip(PAIR_NAMES, ETF_PAIRS)):
         current["raw_signals"][pair_name] = round(float(raw_signals_np[i]), 6)
         current["signals"][pair_name] = round(float(signals_np[i]), 6)
+        current["base_weights"][bull] = round(float(base_weights_np[2 * i]), 6)
+        current["base_weights"][bear] = round(float(base_weights_np[2 * i + 1]), 6)
         current["weights"][bull] = round(float(weights_np[2 * i]), 6)
         current["weights"][bear] = round(float(weights_np[2 * i + 1]), 6)
-
-    # Load and update trade log
-    log = load_trade_log()
 
     # Avoid duplicate entries for the same date
     if log and log[-1]["date"] == latest_date:
@@ -235,7 +287,7 @@ def generate_positions():
     print(f"{'=' * 70}\n")
 
     # Target pair book — weights shown as % of total capital
-    print("  Decision path: raw model score -> tanh-bounded signal -> normalized ETF weights.")
+    print("  Decision path: raw model score -> tanh signal -> normalized target -> live controls.")
     print("  TARGET PAIR BOOK  (these are end-state portfolio targets, not trade deltas):")
     print(f"  {'Pair':<12} {'Raw':>8} {'Signal':>8}   {'Bull ETF':<8} {'Target%':>8}   {'Bear ETF':<8} {'Target%':>8}   Pair target")
     print(f"  {'-' * 72}")

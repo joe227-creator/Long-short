@@ -2,13 +2,16 @@
 
 import unittest
 
+import numpy as np
 import torch
 
 from research.execution_controls import (
     apply_live_weight_band,
     apply_partial_adjustment,
     apply_weight_band,
+    load_live_execution_controls,
 )
+import trade
 
 
 class ExecutionControlTests(unittest.TestCase):
@@ -48,6 +51,28 @@ class ExecutionControlTests(unittest.TestCase):
         target = torch.tensor([0.13, -0.30])
 
         self.assertTrue(torch.equal(apply_live_weight_band(None, target, 0.05), target))
+
+    def test_trade_applies_partial_adjustment_then_weight_band(self):
+        etfs = [etf for pair in trade.ETF_PAIRS for etf in pair]
+        previous = {etf: 0.0 for etf in etfs}
+        target = np.zeros(len(etfs), dtype=float)
+        target[:2] = [0.10, -0.20]
+
+        adjusted = trade.apply_live_execution_controls(
+            target,
+            [{"weights": previous}],
+            {"partial_adjustment": 0.5, "weight_band": 0.06},
+        )
+
+        self.assertEqual(adjusted[0], 0.0)
+        self.assertEqual(adjusted[1], -0.1)
+
+    def test_selected_research_controls_are_loadable_for_live_path(self):
+        controls = load_live_execution_controls()
+
+        self.assertAlmostEqual(controls["uncertainty_strength"], 1.1225169591437967)
+        self.assertAlmostEqual(controls["partial_adjustment"], 0.44338242523523974)
+        self.assertAlmostEqual(controls["weight_band"], 0.01683775438715695)
 
 
 if __name__ == "__main__":
