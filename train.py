@@ -34,7 +34,7 @@ NUM_LAYERS = 1               # number of recurrent layers — 2 optimal (3→57.
 DROPOUT = 0.20               # Baseline.
 FEAT_DROP_RATE = 0.10       # Baseline.
 OUT_DROPOUT = None           # output dropout rate — None optimal (0.2→83.19%, extra reg hurts)
-USE_FEATURE_GATE = False     # learnable feature importance gating
+USE_FEATURE_GATE = True      # learnable feature importance gating
 USE_VSN = True               # BEST CONFIG: VSN gating with alpha=0.02. Required for both long+short directional signals.
 VSN_HIDDEN = 64              # REVERTED from 128 (iter#53): 20-seed confirmation showed 128's canonical-10-seed 2.112 was SEED-FAVORED; honest 20-seed 128=1.652 < 64=1.716. 64 is honest-best + simpler. Canonical 10-seed: 64->1.833
 VSN_RESIDUAL = True          # Blend VSN gating with original: alpha*x + (1-alpha)*vsn(x)
