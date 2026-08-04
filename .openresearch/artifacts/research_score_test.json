@@ -1,0 +1,37 @@
+{
+  "baseline_turnover_source": "pre-run frozen production checkpoint backtest",
+  "complete_windows": 4,
+  "end": "2026-07-20",
+  "metrics": {
+    "cagr": 0.07344480103526907,
+    "cvar_95": -0.05454066023230553,
+    "max_drawdown": 0.2295260727405548,
+    "mean_ret": 0.0017214072868227959,
+    "n_periods": 128,
+    "sharpe": 0.47342071081096443,
+    "skewness": -1.5801498588265446,
+    "std_ret": 0.026220323517918587,
+    "total_return": 0.19059884548187256,
+    "turnover": 0.06983835250139236,
+    "win_rate": 0.546875
+  },
+  "periods_per_year": 52,
+  "score": {
+    "baseline_turnover": 0.298372,
+    "drawdown_penalty": 0.0,
+    "maximum_drawdown": -0.2295260727405548,
+    "mean_rolling_6m_return": 0.05892090415086593,
+    "research_score": 0.13627537120912406,
+    "return_on_risk": 0.25670680218306735,
+    "sharpe": 0.47342071081096443,
+    "sharpe_penalty": 0.3265792891890356,
+    "turnover": 0.06983835250139236,
+    "turnover_penalty": 0.0,
+    "win_rate_126_session": 0.75
+  },
+  "split": "test",
+  "start": "2024-01-04",
+  "trade_frequency": "weekly",
+  "window_periods": 26,
+  "window_trading_sessions": 126
+}

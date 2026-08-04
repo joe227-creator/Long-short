@@ -1,0 +1,128 @@
+{
+  "cost_bps": 10,
+  "selected_parameter": "SIGNAL_POWER_POST",
+  "selected_value": 1.9513567743711688,
+  "mean_period_cost": 3.395150925964117e-05,
+  "gross": {
+    "metrics": {
+      "cagr": 0.08284091296542306,
+      "cvar_95": -0.014309726655483246,
+      "skewness": 1.813504710039883,
+      "sharpe": 1.322728036075123,
+      "max_drawdown": 0.032273538410663605,
+      "turnover": 0.034294452518224716,
+      "total_return": 0.16538786888122559,
+      "win_rate": 0.56,
+      "mean_ret": 0.001567821018397808,
+      "std_ret": 0.008547273464500904,
+      "n_periods": 100
+    },
+    "score": {
+      "mean_rolling_6m_return": 0.055634101231892906,
+      "return_on_risk": 1.7238302328049242,
+      "win_rate_126_session": 1.0,
+      "maximum_drawdown": -0.032273538410663605,
+      "sharpe": 1.322728036075123,
+      "turnover": 0.034294452518224716,
+      "baseline_turnover": 0.298372,
+      "drawdown_penalty": 0.0,
+      "sharpe_penalty": 0.0,
+      "turnover_penalty": 0.0,
+      "research_score": 0.5004001477928778
+    }
+  },
+  "net": {
+    "metrics": {
+      "cagr": 0.08093228742077585,
+      "cvar_95": -0.0143642490953207,
+      "skewness": 1.8116551645238204,
+      "sharpe": 1.2936699695629053,
+      "max_drawdown": 0.03281567514185374,
+      "turnover": 0.034294452518224716,
+      "total_return": 0.16144084493271516,
+      "win_rate": 0.56,
+      "mean_ret": 0.001533869554540142,
+      "std_ret": 0.008550009598871916,
+      "n_periods": 100
+    },
+    "score": {
+      "mean_rolling_6m_return": 0.05467376971919413,
+      "return_on_risk": 1.6660869990592442,
+      "win_rate_126_session": 1.0,
+      "maximum_drawdown": -0.03281567514185374,
+      "sharpe": 1.2936699695629053,
+      "turnover": 0.034294452518224716,
+      "baseline_turnover": 0.298372,
+      "drawdown_penalty": 0.0,
+      "sharpe_penalty": 0.0,
+      "turnover_penalty": 0.0,
+      "research_score": 0.48789116953104295
+    }
+  },
+  "stress": [
+    {
+      "bps": 5,
+      "score": {
+        "mean_rolling_6m_return": 0.05515395084147934,
+        "return_on_risk": 1.6947161195900742,
+        "win_rate_126_session": 1.0,
+        "maximum_drawdown": -0.03254465464978302,
+        "sharpe": 1.308199271791256,
+        "turnover": 0.034294452518224716,
+        "baseline_turnover": 0.298372,
+        "drawdown_penalty": 0.0,
+        "sharpe_penalty": 0.0,
+        "turnover_penalty": 0.0,
+        "research_score": 0.4940971747594942
+      }
+    },
+    {
+      "bps": 10,
+      "score": {
+        "mean_rolling_6m_return": 0.05467376971919413,
+        "return_on_risk": 1.6660869990592442,
+        "win_rate_126_session": 1.0,
+        "maximum_drawdown": -0.03281567514185374,
+        "sharpe": 1.2936699695629053,
+        "turnover": 0.034294452518224716,
+        "baseline_turnover": 0.298372,
+        "drawdown_penalty": 0.0,
+        "sharpe_penalty": 0.0,
+        "turnover_penalty": 0.0,
+        "research_score": 0.48789116953104295
+      }
+    },
+    {
+      "bps": 25,
+      "score": {
+        "mean_rolling_6m_return": 0.05323458848595893,
+        "return_on_risk": 1.5830284768514442,
+        "win_rate_126_session": 1.0,
+        "maximum_drawdown": -0.03362832018779572,
+        "sharpe": 1.2500807142149628,
+        "turnover": 0.034294452518224716,
+        "baseline_turnover": 0.298372,
+        "drawdown_penalty": 0.0,
+        "sharpe_penalty": 0.0,
+        "turnover_penalty": 0.0,
+        "research_score": 0.46984028385624776
+      }
+    },
+    {
+      "bps": 50,
+      "score": {
+        "mean_rolling_6m_return": 0.05084048681677563,
+        "return_on_risk": 1.4533601254148838,
+        "win_rate_126_session": 1.0,
+        "maximum_drawdown": -0.03498134146363926,
+        "sharpe": 1.1774379151068424,
+        "turnover": 0.034294452518224716,
+        "baseline_turnover": 0.298372,
+        "drawdown_penalty": 0.0,
+        "sharpe_penalty": 0.0,
+        "turnover_penalty": 0.0,
+        "research_score": 0.4415125118997524
+      }
+    }
+  ]
+}
