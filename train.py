@@ -117,7 +117,7 @@ _EXPERIMENTAL_TECH_SUFFIXES = [
     # Momentum (6)
     "_kama", "_pvo", "_stochrsi", "_tsi", "_uo", "_willr",
     # Volume (9)
-    "_adi", "_cmf", "_eom", "_fi", "_mfi", "_nvi", "_obv", "_vpt", "_vwap",
+    "_fi", "_mfi", "_nvi", "_obv", "_vpt", "_vwap",
     # Volatility (5)
     "_atr", "_bb_pctb", "_dc_pct", "_kc_pct", "_ulcer",
     # Trend (15)
