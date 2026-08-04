@@ -96,7 +96,7 @@ ENSEMBLE_SEEDS = [6, 42, 123, 7, 99, 11, 22, 33, 44, 55]  # 10-seed ensemble: st
 # Heterogeneous ensemble: different DROPOUT per seed for regime diversity.
 # With EMA=0.98: EMA may stabilize aggressive models (DROPOUT=0.35) that dragged val to 1.802 without EMA.
 ENSEMBLE_DROPOUTS = []  # Homogeneous (all DROPOUT=0.30). Aggressive target.
-WEIGHTED_ENSEMBLE = False    # True = weight seeds by softmax(val_sharpe), False = equal
+WEIGHTED_ENSEMBLE = True     # Weight seeds by early-stop validation Sharpe.
 ENSEMBLE_AGG = "trimmed_mean"        # ensemble aggregation: "mean", "median", "trimmed_mean" — trimmed_mean is BEST
 EXCLUDE_FEATURES = []  # patterns to exclude from features (empty = all)
 
