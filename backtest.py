@@ -191,7 +191,7 @@ def run_backtest(split="test"):
         print("  WARNING: TimesFM cache not found or empty, skipping blend")
 
     all_signals = []
-    all_dispersion = []
+    all_dispersion = {"std": [], "mad": [], "range": []}
     all_targets = []
     all_dates = []
     ema_sig = None  # for signal EMA smoothing
@@ -204,7 +204,14 @@ def run_backtest(split="test"):
         with torch.no_grad():
             stacked = torch.stack([m(x).cpu() for m in models])
             avg_sig = _aggregate_ensemble(stacked)
-            all_dispersion.append(stacked.std(dim=0))
+            ensemble_center = stacked.mean(dim=0)
+            all_dispersion["std"].append(stacked.std(dim=0))
+            all_dispersion["mad"].append(
+                torch.abs(stacked - ensemble_center).mean(dim=0)
+            )
+            all_dispersion["range"].append(
+                stacked.max(dim=0).values - stacked.min(dim=0).values
+            )
         # When cash enabled, split cash signal before pipeline so threshold/clip
         # only applies to pair signals (cash signal should NOT be zeroed).
         _cash_sig = None
@@ -230,7 +237,10 @@ def run_backtest(split="test"):
         all_dates.append(dates[i])
 
     all_signals_t = torch.cat(all_signals, dim=0)
-    dispersion_t = torch.cat(all_dispersion, dim=0)
+    dispersion_t = {
+        name: torch.cat(values, dim=0)
+        for name, values in all_dispersion.items()
+    }
     all_targets_t = torch.cat(all_targets, dim=0)
     evaluation_dates = pd.DatetimeIndex(all_dates)
     vol_forecast = _load_timesfm_vol_forecast(evaluation_dates)

@@ -19,7 +19,9 @@ def load_live_execution_controls(spec_path=None):
         controls["uncertainty_strength"] = float(spec["fixed_uncertainty_strength"])
     if spec.get("fixed_partial_adjustment") is not None:
         controls["partial_adjustment"] = float(spec["fixed_partial_adjustment"])
-    if spec.get("parameter") == "WEIGHT_BAND" and spec.get("selected_value") is not None:
+    if spec.get("fixed_weight_band") is not None:
+        controls["weight_band"] = float(spec["fixed_weight_band"])
+    elif spec.get("parameter") == "WEIGHT_BAND" and spec.get("selected_value") is not None:
         controls["weight_band"] = float(spec["selected_value"])
     return controls
 
