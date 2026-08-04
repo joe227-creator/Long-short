@@ -218,7 +218,8 @@ def optimize_or_load(split, signals, targets, vol_forecast, dates, frequency, di
         if not best_path.exists():
             raise RuntimeError("Validation Optuna result missing before test evaluation")
         best_value = json.loads(best_path.read_text(encoding="utf-8"))["value"]
-        print(f"OPTUNA reused {spec['parameter']}={float(best_value):.8g}")
+        value_text = best_value if isinstance(best_value, str) else f"{best_value:.8g}"
+        print(f"OPTUNA reused {spec['parameter']}={value_text}")
 
     _, weights, returns, _ = _evaluate(
         split, best_value, spec, signals, targets, vol_forecast, dates,
