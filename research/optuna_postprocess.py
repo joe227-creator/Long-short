@@ -36,6 +36,17 @@ def _select_dispersion(dispersion, spec, value):
     return dispersion[metric]
 
 
+def _select_signals(signals, spec, value):
+    if not isinstance(signals, dict):
+        return signals
+    method = spec.get("signal_method", "trimmed_mean")
+    if spec["parameter"] == "ENSEMBLE_AGG":
+        method = value
+    if method not in signals:
+        raise ValueError(f"Unknown ensemble aggregation: {method}")
+    return signals[method]
+
+
 def _format_optuna_value(value):
     if isinstance(value, (int, float)):
         return f"{value:.8g}"
@@ -43,6 +54,7 @@ def _format_optuna_value(value):
 
 
 def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
+    signals = _select_signals(signals, spec, value)
     dispersion = _select_dispersion(dispersion, spec, value)
     fixed_strength = spec.get("fixed_uncertainty_strength")
     if fixed_strength is not None:
@@ -59,6 +71,8 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
     elif spec["parameter"] == "WEIGHT_BAND":
         pass
     elif spec["parameter"] == "UNCERTAINTY_STATISTIC":
+        pass
+    elif spec["parameter"] == "ENSEMBLE_AGG":
         pass
     else:
         raise ValueError(f"Unsupported Optuna parameter: {spec['parameter']}")

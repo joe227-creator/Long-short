@@ -33,11 +33,23 @@ from train import (
     _load_timesfm_vol_forecast,
 )
 import train as _train_module
-from production_model import _aggregate_ensemble, apply_signal_pipeline, load_timesfm_features_by_date
+from production_model import apply_signal_pipeline, load_timesfm_features_by_date
 from research.evidence import write_evidence
 from research.optuna_postprocess import optimize_or_load
 
 MODELS_DIR = "models"
+ENSEMBLE_METHODS = ("trimmed_mean", "median", "mean")
+
+
+def _aggregate_ensemble_method(stacked_signals, method):
+    if method == "median":
+        return stacked_signals.median(dim=0).values
+    if method == "trimmed_mean":
+        sorted_stack, _ = stacked_signals.sort(dim=0)
+        return sorted_stack[1:-1].mean(dim=0)
+    if method == "mean":
+        return stacked_signals.mean(dim=0)
+    raise ValueError(f"Unsupported ensemble aggregation: {method}")
 
 
 def load_ensemble(device):
@@ -190,11 +202,11 @@ def run_backtest(split="test"):
     elif USE_TIMESFM_VOL and TIMESFM_BLEND_ALPHA < 1.0:
         print("  WARNING: TimesFM cache not found or empty, skipping blend")
 
-    all_signals = []
+    all_signals = {method: [] for method in ENSEMBLE_METHODS}
     all_dispersion = {"std": [], "mad": [], "range": []}
     all_targets = []
     all_dates = []
-    ema_sig = None  # for signal EMA smoothing
+    ema_sig = {method: None for method in ENSEMBLE_METHODS}
     for i in range(split_start_idx, split_end_idx + 1):
         window = feat_np[i - seq_len + 1 : i + 1]
         if len(window) < seq_len:
@@ -203,7 +215,10 @@ def run_backtest(split="test"):
 
         with torch.no_grad():
             stacked = torch.stack([m(x).cpu() for m in models])
-            avg_sig = _aggregate_ensemble(stacked)
+            raw_signals = {
+                method: _aggregate_ensemble_method(stacked, method)
+                for method in ENSEMBLE_METHODS
+            }
             ensemble_center = stacked.mean(dim=0)
             all_dispersion["std"].append(stacked.std(dim=0))
             all_dispersion["mad"].append(
@@ -212,31 +227,37 @@ def run_backtest(split="test"):
             all_dispersion["range"].append(
                 stacked.max(dim=0).values - stacked.min(dim=0).values
             )
-        # When cash enabled, split cash signal before pipeline so threshold/clip
-        # only applies to pair signals (cash signal should NOT be zeroed).
-        _cash_sig = None
-        if CASH_ENABLED and avg_sig.size(1) > 4:  # NUM_PAIRS=4
-            _cash_sig = avg_sig[:, 4:]
-            avg_sig = avg_sig[:, :4]
-        # Signal EMA smoothing (temporal — applies across consecutive predictions)
-        if SIGNAL_EMA_DECAY > 0:
-            if ema_sig is None:
-                ema_sig = avg_sig.clone()
-            else:
-                ema_sig = SIGNAL_EMA_DECAY * ema_sig + (1 - SIGNAL_EMA_DECAY) * avg_sig
-            avg_sig = ema_sig
-        # Apply shared signal pipeline (power, clip, threshold, TimesFM blend) to PAIR signals only
         tsfm_feat = tsfm_features_by_date.get(dates[i]) if tsfm_features_by_date else None
-        avg_sig = apply_signal_pipeline(avg_sig, tsfm_feat)
-        # Reattach cash signal (unprocessed — model learned it directly)
-        if _cash_sig is not None:
-            avg_sig = torch.cat([avg_sig, _cash_sig], dim=1)
-
-        all_signals.append(avg_sig)
+        for method, avg_sig in raw_signals.items():
+            # When cash enabled, split cash signal before pipeline so threshold/clip
+            # only applies to pair signals (cash signal should NOT be zeroed).
+            _cash_sig = None
+            if CASH_ENABLED and avg_sig.size(1) > 4:  # NUM_PAIRS=4
+                _cash_sig = avg_sig[:, 4:]
+                avg_sig = avg_sig[:, :4]
+            # Signal EMA smoothing (temporal — applies across consecutive predictions)
+            if SIGNAL_EMA_DECAY > 0:
+                if ema_sig[method] is None:
+                    ema_sig[method] = avg_sig.clone()
+                else:
+                    ema_sig[method] = (
+                        SIGNAL_EMA_DECAY * ema_sig[method]
+                        + (1 - SIGNAL_EMA_DECAY) * avg_sig
+                    )
+                avg_sig = ema_sig[method]
+            # Apply shared signal pipeline to pair signals only.
+            avg_sig = apply_signal_pipeline(avg_sig, tsfm_feat)
+            # Reattach cash signal (unprocessed — model learned it directly).
+            if _cash_sig is not None:
+                avg_sig = torch.cat([avg_sig, _cash_sig], dim=1)
+            all_signals[method].append(avg_sig)
         all_targets.append(torch.tensor(tgt_np[i:i + 1], dtype=torch.float32))
         all_dates.append(dates[i])
 
-    all_signals_t = torch.cat(all_signals, dim=0)
+    all_signals_t = {
+        method: torch.cat(values, dim=0)
+        for method, values in all_signals.items()
+    }
     dispersion_t = {
         name: torch.cat(values, dim=0)
         for name, values in all_dispersion.items()
