@@ -102,7 +102,7 @@ EXCLUDE_FEATURES = []  # patterns to exclude from features (empty = all)
 
 # Experimental features added to prepare.py but NOT part of the best 126-feature config.
 # Set to True to include them (for feature-space experiments).
-INCLUDE_EXPERIMENTAL_FEATURES = False
+INCLUDE_EXPERIMENTAL_FEATURES = True
 
 # New FRED macro prefixes (9 series × 3 features = 27)
 _EXPERIMENTAL_MACRO_PREFIXES = [
