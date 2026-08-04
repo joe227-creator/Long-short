@@ -21,6 +21,8 @@ def load_live_execution_controls(spec_path=None):
         controls["partial_adjustment"] = float(spec["fixed_partial_adjustment"])
     if spec.get("parameter") == "WEIGHT_BAND" and spec.get("selected_value") is not None:
         controls["weight_band"] = float(spec["selected_value"])
+    elif spec.get("fixed_weight_band") is not None:
+        controls["weight_band"] = float(spec["fixed_weight_band"])
     return controls
 
 
@@ -63,6 +65,34 @@ def apply_state_band(values, band):
 def apply_weight_band(weights, band):
     """Hold each ETF target until its change reaches ``band``."""
     return apply_state_band(weights, band)
+
+
+def apply_asymmetric_weight_band(weights, enter_band, exit_band):
+    """Hold targets with asymmetric bands by position direction.
+
+    Widens the retention band when a component is moving away from zero
+    (entering/increasing) and narrows it when moving toward zero (exiting),
+    per arXiv 2607.25258. ``enter_band >= exit_band`` is expected.
+    """
+    enter_band = float(enter_band)
+    exit_band = float(exit_band)
+    if (enter_band <= 0 and exit_band <= 0) or len(weights) <= 1:
+        return weights
+    if weights.ndim != 2:
+        raise ValueError("State history must be rank-2")
+
+    held = [weights[0]]
+    previous = weights[0]
+    for current in weights[1:]:
+        reducing = current.abs() < previous.abs()
+        band = torch.where(reducing, exit_band, enter_band)
+        previous = torch.where(
+            (current - previous).abs() >= band,
+            current,
+            previous,
+        )
+        held.append(previous)
+    return torch.stack(held, dim=0)
 
 
 def apply_live_weight_band(previous_weights, target_weights, band):

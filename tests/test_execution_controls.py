@@ -6,6 +6,7 @@ import numpy as np
 import torch
 
 from research.execution_controls import (
+    apply_asymmetric_weight_band,
     apply_live_weight_band,
     apply_partial_adjustment,
     apply_weight_band,
@@ -64,8 +65,8 @@ class ExecutionControlTests(unittest.TestCase):
             {"partial_adjustment": 0.5, "weight_band": 0.06},
         )
 
-        self.assertEqual(adjusted[0], 0.0)
-        self.assertEqual(adjusted[1], -0.1)
+        self.assertAlmostEqual(adjusted[0], 0.0)
+        self.assertAlmostEqual(adjusted[1], -0.1)
 
     def test_selected_research_controls_are_loadable_for_live_path(self):
         controls = load_live_execution_controls()
@@ -73,6 +74,26 @@ class ExecutionControlTests(unittest.TestCase):
         self.assertAlmostEqual(controls["uncertainty_strength"], 1.1225169591437967)
         self.assertAlmostEqual(controls["partial_adjustment"], 0.44338242523523974)
         self.assertAlmostEqual(controls["weight_band"], 0.01683775438715695)
+
+    def test_asymmetric_band_wider_for_entry_narrower_for_exit(self):
+        weights = torch.tensor([
+            [0.0, 0.0],
+            [0.10, -0.10],
+            [0.02, -0.02],
+        ])
+        held = apply_asymmetric_weight_band(weights, enter_band=0.06, exit_band=0.01)
+        self.assertTrue(torch.allclose(held[1], torch.tensor([0.10, -0.10])))
+        self.assertTrue(torch.allclose(held[2], torch.tensor([0.02, -0.02])))
+
+    def test_asymmetric_band_blocks_small_entry_but_allows_exit(self):
+        weights = torch.tensor([
+            [0.0, 0.0],
+            [0.03, -0.03],
+            [0.18, -0.18],
+        ])
+        held = apply_asymmetric_weight_band(weights, enter_band=0.06, exit_band=0.01)
+        self.assertTrue(torch.allclose(held[1], torch.tensor([0.0, 0.0])))
+        self.assertTrue(torch.allclose(held[2], torch.tensor([0.18, -0.18])))
 
 
 if __name__ == "__main__":
