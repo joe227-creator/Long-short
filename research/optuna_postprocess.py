@@ -31,10 +31,28 @@ def _apply_hysteresis(signals, band):
     return torch.stack(held, dim=0)
 
 
+def _suggest_value(trial, spec):
+    if spec.get("choices"):
+        return trial.suggest_categorical(spec["parameter"], spec["choices"])
+    if spec.get("integer"):
+        return trial.suggest_int(
+            spec["parameter"], int(spec["low"]), int(spec["high"])
+        )
+    return trial.suggest_float(
+        spec["parameter"],
+        float(spec["low"]),
+        float(spec["high"]),
+        log=bool(spec.get("log", False)),
+    )
+
+
 def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequency, dispersion, metric_fn):
     fixed_strength = spec.get("fixed_uncertainty_strength")
     if fixed_strength is not None:
         signals = signals / (1.0 + float(fixed_strength) * dispersion)
+    fixed_hysteresis = spec.get("fixed_hysteresis")
+    if fixed_hysteresis is not None:
+        signals = _apply_hysteresis(signals, float(fixed_hysteresis))
     if spec["parameter"] == "HYSTERESIS":
         signals = _apply_hysteresis(signals, float(value))
     elif spec["parameter"] == "UNCERTAINTY_STRENGTH":
@@ -44,7 +62,11 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
         signals = signals / (1.0 + strength * dispersion)
     elif spec["parameter"] in {"VOL_GATE_THRESHOLD", "VOL_GATE_STRENGTH", "CASH_BIAS"}:
         setattr(_train, spec["parameter"], float(value))
-    else:
+    elif spec["parameter"] == "VOL_GATE_WINDOW":
+        setattr(_train, spec["parameter"], int(value))
+    elif spec["parameter"] == "VOL_GATE_FORMULA":
+        setattr(_train, spec["parameter"], value)
+    elif spec["parameter"] != "GROSS_EXPOSURE_CAP":
         raise ValueError(f"Unsupported Optuna parameter: {spec['parameter']}")
     weights, returns = _train.compute_portfolio(
         signals, targets, vol_forecast=vol_forecast
@@ -60,6 +82,14 @@ def _evaluate(split, value, spec, signals, targets, vol_forecast, dates, frequen
                 + float(partial_rate) * (weights[row] - adjusted_weights[row - 1])
             )
         weights = adjusted_weights
+        returns = (weights * targets).sum(dim=1)
+    gross_cap = spec.get("fixed_gross_exposure_cap")
+    if spec["parameter"] == "GROSS_EXPOSURE_CAP":
+        gross_cap = value
+    if gross_cap is not None:
+        gross_exposure = weights.abs().sum(dim=1, keepdim=True).clamp(min=1e-8)
+        cap_scale = torch.clamp(float(gross_cap) / gross_exposure, max=1.0)
+        weights = weights * cap_scale
         returns = (weights * targets).sum(dim=1)
     returns_np = returns.detach().cpu().numpy()
     weights_np = weights.detach().cpu().numpy()
@@ -156,12 +186,7 @@ def optimize_or_load(split, signals, targets, vol_forecast, dates, frequency, di
         study.set_user_attr("parameter", spec["parameter"])
 
         def objective(trial):
-            value = trial.suggest_float(
-                spec["parameter"],
-                float(spec["low"]),
-                float(spec["high"]),
-                log=bool(spec.get("log", False)),
-            )
+            value = _suggest_value(trial, spec)
             score, _, _, _ = _evaluate(
                 split, value, spec, signals, targets, vol_forecast, dates,
                 frequency, dispersion, metric_fn,
