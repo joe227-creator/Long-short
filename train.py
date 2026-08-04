@@ -38,7 +38,7 @@ USE_FEATURE_GATE = False     # learnable feature importance gating
 USE_VSN = True               # BEST CONFIG: VSN gating with alpha=0.02. Required for both long+short directional signals.
 VSN_HIDDEN = 64              # REVERTED from 128 (iter#53): 20-seed confirmation showed 128's canonical-10-seed 2.112 was SEED-FAVORED; honest 20-seed 128=1.652 < 64=1.716. 64 is honest-best + simpler. Canonical 10-seed: 64->1.833
 VSN_RESIDUAL = True          # Blend VSN gating with original: alpha*x + (1-alpha)*vsn(x)
-VSN_LEARNABLE_ALPHA = False  # True = learn alpha per-feature, False = fixed VSN_ALPHA
+VSN_LEARNABLE_ALPHA = True   # Learn residual alpha per feature.
 VSN_ALPHA = 0.02             # Baseline: 0.02. Test-strong config.
 SEQ_LEN = 90                 # sequence length — 90 optimal (60→45.57%, 120→val inf/catastrophic)
 
