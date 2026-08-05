@@ -136,6 +136,16 @@ def optimize_or_load(split, signals, targets, vol_forecast, dates, frequency, di
     artifact_dir.mkdir(parents=True, exist_ok=True)
     best_path = artifact_dir / f"optuna_{spec['study_name']}_best.json"
 
+    if spec.get("selected_value") is not None:
+        best_value = float(spec["selected_value"])
+        print(f"OPTUNA fixed {spec['parameter']}={best_value:.8g} (selected_value preset)")
+        _, weights, returns, _ = _evaluate(
+            split, best_value, spec, signals, targets, vol_forecast, dates,
+            frequency, dispersion, metric_fn,
+        )
+        print(f"COST_BPS={spec['cost_bps']} net_score_artifact=cost_overlay_{split}.json")
+        return weights, returns
+
     if split == "val":
         db_path = artifact_dir / f"optuna_{spec['study_name']}.db"
         study = optuna.create_study(
