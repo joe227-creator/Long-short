@@ -1,0 +1,10 @@
+{
+  "parameter": "input_noise",
+  "env": "ARC_INPUT_NOISE",
+  "value": 0.019076801401957763,
+  "research_score": 0.576994,
+  "trial": 0,
+  "n_trials": 4,
+  "screen_seeds": "42,6,123",
+  "screen_time_budget": 120
+}

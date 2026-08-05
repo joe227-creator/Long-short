@@ -1,0 +1,68 @@
+{
+  "fold": "",
+  "seeds": [
+    {
+      "seed": 42,
+      "val": {
+        "val_score": -1.381693,
+        "sharpe": 1.423502,
+        "max_drawdown": 0.082648,
+        "turnover": 0.376761,
+        "mean_daily_ret": 0.0074618,
+        "std_daily_ret": 0.0377996,
+        "num_samples": 11
+      },
+      "test": {
+        "val_score": 0.281394,
+        "sharpe": -0.214188,
+        "max_drawdown": 0.355958,
+        "turnover": 0.494072,
+        "mean_daily_ret": -0.00106779,
+        "std_daily_ret": 0.03594952,
+        "num_samples": 138
+      }
+    },
+    {
+      "seed": 6,
+      "val": {
+        "val_score": -0.270145,
+        "sharpe": 0.319937,
+        "max_drawdown": 0.146031,
+        "turnover": 0.424906,
+        "mean_daily_ret": 0.00231609,
+        "std_daily_ret": 0.05220271,
+        "num_samples": 11
+      },
+      "test": {
+        "val_score": -0.383205,
+        "sharpe": 0.444593,
+        "max_drawdown": 0.225406,
+        "turnover": 0.501171,
+        "mean_daily_ret": 0.00200986,
+        "std_daily_ret": 0.032599,
+        "num_samples": 138
+      }
+    },
+    {
+      "seed": 123,
+      "val": {
+        "val_score": -0.586627,
+        "sharpe": 0.593695,
+        "max_drawdown": 0.140953,
+        "turnover": 0.000202,
+        "mean_daily_ret": 0.00441179,
+        "std_daily_ret": 0.05358626,
+        "num_samples": 11
+      },
+      "test": {
+        "val_score": -1.016354,
+        "sharpe": 1.042751,
+        "max_drawdown": 0.182401,
+        "turnover": 0.17276,
+        "mean_daily_ret": 0.00448829,
+        "std_daily_ret": 0.03103863,
+        "num_samples": 138
+      }
+    }
+  ]
+}

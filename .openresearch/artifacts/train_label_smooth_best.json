@@ -1,0 +1,10 @@
+{
+  "parameter": "label_smooth",
+  "env": "ARC_LABEL_SMOOTH",
+  "value": 0.07630720560783105,
+  "research_score": 0.720271,
+  "trial": 0,
+  "n_trials": 4,
+  "screen_seeds": "42,6,123",
+  "screen_time_budget": 120
+}
