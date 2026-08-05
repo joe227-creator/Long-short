@@ -22,6 +22,7 @@ SPEC = {
     "turn_pen": {"env": "ARC_TURN_PEN", "low": 0.0, "high": 60.0, "n_trials": 4},
     "ret_scale": {"env": "ARC_RET_SCALE", "low": 10.0, "high": 400.0, "n_trials": 4},
     "patience": {"env": "ARC_PATIENCE", "low": 3, "high": 30, "n_trials": 4, "int": True},
+    "long_only": {"env": "ARC_LONG_ONLY", "low": 0, "high": 1, "n_trials": 4, "int": True},
 }
 
 SEED = 20260803
