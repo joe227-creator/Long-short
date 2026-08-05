@@ -28,7 +28,7 @@ from prepare import (
 # ---------------------------------------------------------------------------
 
 # Model architecture
-MODEL_TYPE = "lstm"          # 'lstm', 'gru', 'mlp', 'lstm_attn', 'lstm_bidir', 'tcn', 'linear' — agent can change
+MODEL_TYPE = os.environ.get("ARC_MODEL_TYPE", "lstm")  # architecture ablation via env
 HIDDEN_DIM = 512             # Baseline.
 NUM_LAYERS = 1               # number of recurrent layers — 2 optimal (3→57.81%, too many params)
 DROPOUT = 0.20               # Baseline.
