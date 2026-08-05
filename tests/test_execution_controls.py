@@ -64,8 +64,8 @@ class ExecutionControlTests(unittest.TestCase):
             {"partial_adjustment": 0.5, "weight_band": 0.06},
         )
 
-        self.assertEqual(adjusted[0], 0.0)
-        self.assertEqual(adjusted[1], -0.1)
+        self.assertAlmostEqual(adjusted[0], 0.0)
+        self.assertAlmostEqual(adjusted[1], -0.1)
 
     def test_selected_research_controls_are_loadable_for_live_path(self):
         controls = load_live_execution_controls()
